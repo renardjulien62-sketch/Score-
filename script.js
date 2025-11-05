@@ -346,7 +346,7 @@ async function demarrerSequenceReveal() {
 
 
 /**
- * MODIFIÉ : Calcule les rangs avant de lancer la séquence
+ * MODIFIÉ : Calcule les rangs ET SAUVEGARDE L'HISTORIQUE
  */
 function terminerPartie() {
     sequenceForceStop = false;
@@ -363,6 +363,10 @@ function terminerPartie() {
         return lowScoreWins ? a.scoreTotal - b.scoreTotal : b.scoreTotal - a.scoreTotal;
     });
     classementFinal = calculerRangs(joueursTries); // Stocke le résultat globalement
+    
+    // --- NOUVELLE ÉTAPE: Sauvegarder dans l'historique ---
+    sauvegarderHistoriquePartie(classementFinal);
+    // --- Fin de la nouvelle étape ---
 
     // --- ÉTAPE 2: Gérer le cas secret ---
     if (scoresSecrets) {
@@ -403,10 +407,12 @@ function terminerPartie() {
 
 // --- FONCTIONS GRAPHIQUE ---
 
-// (Fonction genererCouleurAleatoire - Inchangée)
-function genererCouleurAleatoire() { /* ... (inchangé) ... */
+// (Fonction genererCouleurAleatoire - Corrigée)
+function genererCouleurAleatoire() {
     const couleurs = [ '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#E7E9ED', '#8036EB', '#FFAB91', '#81D4FA', '#FFF59D', '#A5D6A7' ];
-    let couleursPrises = joueurs.map(j => j.couleur.toUpperCase()); let couleurDispo = couleurs.find(c => !couleursPrises.includes(c));
+    let couleursPrises = joueurs.map(j => j.couleur.toUpperCase()); 
+    // Correction de la faute de frappe "coueursPrises" -> "couleursPrises"
+    let couleurDispo = couleurs.find(c => !couleursPrises.includes(c)); 
     if (couleurDispo) { return couleurDispo; } return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
 }
 // (Fonction creerGraphique - Inchangée)
@@ -487,7 +493,7 @@ couleurJoueurInput.value = genererCouleurAleatoire();
 
 
 /* =================================================================
---- SECTION AUTHENTIFICATION ET SAUVEGARDE (Nouveau Code) ---
+--- SECTION AUTHENTIFICATION ET SAUVEGARDE (Code Modifié) ---
 =================================================================
 */
 
@@ -502,6 +508,7 @@ const userEcran = document.getElementById('user-ecran');
 const userEmail = document.getElementById('user-email');
 const authErreur = document.getElementById('auth-erreur');
 const listePartiesSauvegardees = document.getElementById('liste-parties-sauvegardees');
+const listeHistoriqueParties = document.getElementById('liste-historique-parties'); // NOUVEAU
 const lancerNouvellePartieBtn = document.getElementById('lancer-nouvelle-partie-btn');
 
 // Boutons d'authentification
@@ -555,8 +562,7 @@ logoutBtn.addEventListener('click', () => {
 
 // --- 3. Gestionnaire d'état de connexion (Le Cerveau) ---
 
-// Cette fonction est appelée automatiquement par Firebase
-// chaque fois que l'utilisateur se connecte ou se déconnecte.
+// (Modifié pour charger aussi l'historique)
 auth.onAuthStateChanged(user => {
     if (user) {
         // Utilisateur connecté
@@ -571,6 +577,7 @@ auth.onAuthStateChanged(user => {
 
         // Charge les parties de cet utilisateur
         chargerListeParties();
+        chargerHistoriqueParties(); // NOUVEAU
 
     } else {
         // Utilisateur déconnecté
@@ -664,7 +671,7 @@ function chargerListeParties() {
            .get()
            .then(querySnapshot => {
                if (querySnapshot.empty) {
-                   listePartiesSauvegardees.innerHTML = "<p>Aucune partie sauvegardée.</p>";
+                   listePartiesSauvegardees.innerHTML = "<p>Aucune partie en cours.</p>";
                    return;
                }
                
@@ -772,5 +779,129 @@ listePartiesSauvegardees.addEventListener('click', e => {
                 chargerListeParties(); // Rafraîchit la liste
             });
         }
+    }
+});
+
+// --- 5. NOUVELLES Fonctions pour l'HISTORIQUE ---
+
+/**
+ * NOUVEAU : Sauvegarde le classement final dans l'historique
+ * et supprime la partie "en cours".
+ */
+async function sauvegarderHistoriquePartie(classement) {
+    if (!currentUser) return; // Pas connecté, ne peut pas sauvegarder
+
+    const userRef = db.collection('utilisateurs').doc(currentUser.uid);
+    const historiqueRef = userRef.collection('historique');
+
+    // Crée un objet simple pour l'historique
+    const entreeHistorique = {
+        date: new Date().toISOString(),
+        classement: classement // C'est le tableau [joueurs...] avec rangs et scores
+    };
+
+    try {
+        // Ajoute à l'historique
+        await historiqueRef.add(entreeHistorique);
+        console.log("Historique de partie sauvegardé !");
+        
+        // Rafraîchit la liste de l'historique sur l'écran d'accueil
+        if (!userEcran.classList.contains('cache')) {
+            chargerHistoriqueParties();
+        }
+
+        // Si cette partie était une partie "sauvegardée" (en cours),
+        // on la supprime maintenant qu'elle est terminée.
+        if (partieIdActuelle) {
+            const partieEnCoursRef = userRef.collection('parties').doc(partieIdActuelle);
+            await partieEnCoursRef.delete();
+            partieIdActuelle = null; // Vide l'ID
+            console.log("Partie 'en cours' supprimée et transférée à l'historique.");
+            
+            // Rafraîchit aussi la liste des parties en cours
+             if (!userEcran.classList.contains('cache')) {
+                chargerListeParties();
+             }
+        }
+    } catch (err) {
+        console.error("Erreur sauvegarde historique: ", err);
+    }
+}
+
+/**
+ * NOUVEAU : Charge l'historique des parties terminées
+ */
+function chargerHistoriqueParties() {
+    if (!currentUser) return;
+    
+    const userRef = db.collection('utilisateurs').doc(currentUser.uid);
+    listeHistoriqueParties.innerHTML = "Chargement...";
+    
+    userRef.collection('historique')
+           .orderBy('date', 'desc') // Montre les plus récentes en premier
+           .limit(20) // Limite aux 20 dernières parties
+           .get()
+           .then(querySnapshot => {
+               if (querySnapshot.empty) {
+                   listeHistoriqueParties.innerHTML = "<p>Aucun historique de partie.</p>";
+                   return;
+               }
+               
+               listeHistoriqueParties.innerHTML = ""; // Vide la liste
+               querySnapshot.forEach(doc => {
+                   const partie = doc.data();
+                   const docId = doc.id;
+                   
+                   // Formatte le texte du podium
+                   let podiumTexte = partie.classement.map(j => {
+                       let medaille = '';
+                       if (j.rang === 1) medaille = '🥇';
+                       else if (j.rang === 2) medaille = '🥈';
+                       else if (j.rang === 3) medaille = '🥉';
+                       else medaille = `<strong>${j.rang}.</strong>`;
+                       
+                       return `${medaille} ${j.nom} (${j.scoreTotal} pts)`;
+                   }).join(', ');
+
+                   // Formatte la date
+                   const datePartie = new Date(partie.date).toLocaleDateString('fr-FR', {
+                       day: 'numeric', month: 'short', year: 'numeric' 
+                   });
+
+                   const div = document.createElement('div');
+                   div.className = 'partie-historique';
+                   div.innerHTML = `
+                       <span><strong>${datePartie} :</strong> ${podiumTexte}</span>
+                       <button class="supprimer-hist-btn" data-id="${docId}" title="Supprimer de l'historique">&times;</button>
+                   `;
+                   listeHistoriqueParties.appendChild(div);
+               });
+           })
+           .catch(err => {
+               console.error("Erreur chargement historique: ", err);
+               listeHistoriqueParties.innerHTML = "<p>Erreur lors du chargement.</p>";
+           });
+}
+
+/**
+ * NOUVEAU : Gère la suppression d'un item de l'historique
+ */
+listeHistoriqueParties.addEventListener('click', e => {
+    const target = e.target;
+    const id = target.dataset.id;
+    // Vérifie qu'on clique bien sur le bouton supprimer
+    if (!id || !currentUser || !target.classList.contains('supprimer-hist-btn')) {
+        return;
+    }
+    
+    const histRef = db.collection('utilisateurs').doc(currentUser.uid).collection('historique').doc(id);
+
+    if (confirm("Voulez-vous vraiment supprimer cette partie de l'historique ?")) {
+        histRef.delete().then(() => {
+            chargerHistoriqueParties(); // Rafraîchit la liste
+        }).catch(err => {
+            console.error("Erreur de suppression: ", err);
+            alert("Une erreur est survenue.");
+        });
     }
 });
