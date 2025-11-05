@@ -461,7 +461,7 @@ nomJoueurInput.addEventListener('keypress', (e) => { /* ... (inchangé) ... */ i
 // (Démarrage de la partie - Inchangé)
 demarrerBouton.addEventListener('click', () => { /* ... (inchangé) ... */
     sequenceForceStop = false; if (joueurs.length < 2) return; scoresSecrets = modeSecretConfig.checked; const victoireChoix = document.querySelector('input[name="condition-victoire"]:checked').value; lowScoreWins = (victoireChoix === 'low'); mancheActuelle = 0;
-    joueurs.forEach(j => { j.scoreTotal = 0; j.scoresTour = []; j.scoreRelatifPivot = 0; j.rang = undefined; }); // Nettoie le rang
+    joueurs.forEach(j => { j.scoreTotal = 0; j.scoresTour = []; j.scoreRelatifPivot = 0; j.rang = null; }); // Nettoie le rang
     const graphContainer = document.querySelector('.graphique-container'); const graphOriginalParent = document.querySelector('.score-gauche'); const inputTourDiv = document.querySelector('.input-tour');
     if (graphContainer && graphOriginalParent && inputTourDiv) { graphOriginalParent.insertBefore(graphContainer, inputTourDiv); }
     podiumEcran.classList.add('cache'); revealEcran.classList.add('cache');
