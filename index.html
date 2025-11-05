@@ -34,12 +34,26 @@
     </div>
 
     <div id="configuration-ecran" class="cache">
+        
         <h2>🎲 Nouvelle Partie</h2>
+
+        <div class="input-group">
+            <input type="text" id="nom-jeu-config" placeholder="Nom du jeu (ex: Skyjo, 6 qui prend!)" style="width: 300px;" list="datalist-jeux">
+            <datalist id="datalist-jeux">
+                </datalist>
+        </div>
+        
         <div class="input-group">
             <input type="text" id="nom-joueur" placeholder="Nom du joueur">
             <label for="couleur-joueur" class="label-couleur">Couleur :</label>
             <input type="color" id="couleur-joueur" value="#FF6384">
             <button id="ajouter-joueur">Ajouter</button>
+        </div>
+        
+        <div id="suggestions-joueurs" class="input-group cache">
+            <h3>Joueurs récents :</h3>
+            <div id="liste-suggestions-joueurs" style="width: 100%;">
+                </div>
         </div>
 
         <div id="liste-joueurs-conf" class="input-group">
@@ -102,7 +116,6 @@
                 
                 <button id="sauvegarder-partie" style="background-color: #28a745; width: 100%;">Sauvegarder la partie</button>
                 <p id="save-feedback" class="cache" style="color: green; text-align: center;"></p>
-
                 <button id="arreter-maintenant" class="bouton-fin">Terminer la partie Maintenant</button>
             </div>
         </div>
@@ -144,11 +157,15 @@
             <ul id="autres-joueurs-liste"></ul>
         </div>
         <div id="graphique-final-container" class="input-group"></div>
+
+        <button id="retour-accueil-btn" class="bouton-fin" style="background-color: #6c757d; margin-top: 20px;">Retour à l'accueil</button>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script> <script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
+
+    <script>
       // Ta configuration Firebase
       const firebaseConfig = {
         apiKey: "AIzaSyD1cC-bahvm3fqZcsYYiBvolyaqVyMGXnI",
