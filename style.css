@@ -224,7 +224,7 @@ button:disabled {
     justify-content: center;
     align-items: center;
     overflow: hidden;
-    cursor: pointer; /* NOUVEAU: Montre qu'on peut cliquer */
+    cursor: pointer;
 }
 
 #reveal-content {
@@ -237,7 +237,7 @@ button:disabled {
     max-width: 80%;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     transform: translateZ(0); 
-    cursor: default; /* NOUVEAU: Le nuage lui-même n'est pas cliquable */
+    cursor: default;
 }
 
 #reveal-rang {
@@ -280,7 +280,6 @@ button:disabled {
     margin: 0;
 }
 
-/* NOUVEAU: Style du bouton Skip Total */
 #skip-all-btn {
     position: fixed;
     bottom: 30px;
@@ -319,7 +318,7 @@ button:disabled {
 /* --- ▲▲▲ FIN DES ANIMATIONS ▲▲▲ --- */
 
 
-/* --- STYLES DU PODIUM VISUEL (Inchangé) --- */
+/* --- STYLES DU PODIUM VISUEL --- */
 #podium-ecran {
     text-align: center;
 }
@@ -382,14 +381,13 @@ button:disabled {
     padding: 8px;
     border-bottom: 1px solid #eee;
 }
-/* --- ▲▲▲ FIN DES STYLES DU PODIUM ▲▲▲ --- */
 
 /* Conteneur du graphique final */
 #graphique-final-container {
     margin-top: 20px;
 }
 
-/* --- NOUVEAUX STYLES AJOUTÉS --- */
+/* --- STYLES AJOUTÉS (AUTH, HISTORIQUE, SUGGESTIONS) --- */
 .erreur-msg {
     color: #dc3545; /* Rouge */
     width: 100%;
@@ -402,32 +400,71 @@ button:disabled {
     padding: 5px 10px;
     font-size: 0.9em;
 }
-
 #liste-parties-sauvegardees button.supprimer-btn {
     background-color: #dc3545;
 }
 
-/* NOUVEAU : Styles pour l'historique */
-#liste-historique-parties .partie-historique {
+/* Styles pour l'historique par catégorie */
+.groupe-jeu-summary {
+    font-size: 1.3em;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px;
+    background-color: #e9ecef;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+.partie-historique-contenu {
+    padding-left: 15px;
+    border-left: 3px solid #ccc;
+    margin-left: 10px;
+}
+.partie-historique {
     background-color: #f9f9f9;
     border: 1px solid #eee;
     padding: 10px 15px;
     margin-bottom: 8px;
     border-radius: 5px;
-    display: flex; /* Pour aligner le bouton supprimer */
+    display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 10px;
     font-size: 0.9em;
 }
-#liste-historique-parties .partie-historique span {
-    flex-grow: 1; /* Prend la place restante */
-    word-break: break-word; /* Évite le débordement */
+.partie-historique span {
+    flex-grow: 1;
+    word-break: break-word;
 }
-#liste-historique-parties .partie-historique button {
+.partie-historique button {
     padding: 5px 10px;
     font-size: 0.9em;
-    background-color: #dc3545; /* Rouge pour supprimer */
-    flex-shrink: 0; /* Empêche le bouton de rétrécir */
+    flex-shrink: 0;
     margin: 0;
+}
+.partie-historique button.supprimer-hist-btn {
+     background-color: #dc3545;
+}
+.partie-historique button.voir-hist-btn {
+    background-color: #17a2b8;
+}
+
+/* NOUVEAU : Styles pour les suggestions de joueurs */
+#liste-suggestions-joueurs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.joueur-suggestion-tag {
+    display: inline-flex;
+    align-items: center;
+    background-color: #e0e0e0;
+    color: #333;
+    padding: 7px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.joueur-suggestion-tag:hover {
+    background-color: #c5c5c5;
 }
