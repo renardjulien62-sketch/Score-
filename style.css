@@ -164,7 +164,17 @@ h3 {
 .label-couleur { margin-left: 5px; font-size: 0.9em; }
 input[type="color"] { width: 40px; height: 40px; border: none; padding: 0; cursor: pointer; background-color: transparent; border-radius: 5px; }
 .fin-partie-options input[type="number"] { width: 60px; padding: 5px; }
-input[type="text"], input[type="number"], input[type="email"], input[type="password"] { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 150px; }
+input[type="text"], input[type="number"], input[type="email"], input[type="password"], select { 
+    padding: 10px; 
+    border: 1px solid #ccc; 
+    border-radius: 4px; 
+    width: 150px; 
+}
+select {
+    width: auto;
+    flex-grow: 1;
+}
+
 button { padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color: 0.3s; margin-top: 5px; font-weight: 700; }
 button:hover:not(:disabled) { background-color: #0056b3; }
 button:disabled { background-color: #ccc; cursor: not-allowed; }
@@ -214,25 +224,20 @@ button:disabled { background-color: #ccc; cursor: not-allowed; }
     display: flex;
     flex-direction: column; 
 }
-
-/* MODIFICATION ICI : Règle pour l'affichage en ligne */
 .setting-item.inline {
     flex-direction: row;
     align-items: center;
 }
-/* La plupart des labels (radios) sont gérés par cette règle */
 .setting-item label {
     font-weight: 500;
     cursor: pointer;
     display: flex;
     align-items: center;
 }
-/* ... Sauf le label du 'setting-item.inline' qu'on gère à part */
 .setting-item.inline label {
     font-weight: 500;
     cursor: pointer;
 }
-
 .setting-item input[type="checkbox"],
 .setting-item input[type="radio"] {
     margin-right: 10px;
@@ -240,7 +245,6 @@ button:disabled { background-color: #ccc; cursor: not-allowed; }
 }
 .setting-title {
     margin-bottom: 10px;
-    /* MODIFICATION ICI : Mis en 900 (très gras) */
     font-weight: 900;
 }
 .radio-option {
@@ -373,3 +377,101 @@ button:disabled { background-color: #ccc; cursor: not-allowed; }
     transition: background-color 0.2s;
 }
 .joueur-suggestion-tag:hover { background-color: #d1d5da; }
+
+/* *** MODIFIÉS : STYLES POUR LES STATS (REQ 1 & 2) *** */
+.stats-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+.stats-container .input-group {
+    flex: 1;
+    min-width: 240px;
+    margin-bottom: 0;
+    /* NOUVEAU : S'assure qu'ils ont tous le même contenu de départ */
+    display: flex;
+    flex-direction: column;
+}
+.stats-container h3 {
+    width: 100%;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+}
+.stats-container ol {
+    width: 100%;
+    padding-left: 20px;
+    margin: 0;
+}
+.stats-container li {
+    font-weight: 700;
+    font-size: 1.1em;
+    margin-bottom: 5px;
+}
+.stats-container li span {
+    font-weight: 400;
+    font-size: 0.9em;
+    color: #555;
+    margin-left: 5px;
+}
+
+/* *** MODIFIÉS : STYLES GRAPHIQUE (REQ 3) *** */
+.graphique-container-details {
+    width: 100%;
+    margin-top: 15px;
+}
+#history-details-chart-controls {
+    align-items: flex-start;
+}
+#history-details-chart-controls h3 {
+    width: 100%;
+    margin-bottom: 10px;
+}
+/* NOUVEAU : Conteneur pour les tags de joueurs */
+#graph-players-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 10px; 
+    min-height: 20px; /* Espace minimum */
+}
+/* NOUVEAU : Tag de joueur pour le graphique */
+.graph-player-tag {
+    display: inline-flex;
+    align-items: center;
+    background-color: #e9ecef;
+    color: #333;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-weight: 700;
+    font-size: 0.9em;
+}
+/* Utilise le style de bouton existant */
+.graph-player-tag .bouton-retirer {
+    font-size: 1.1em;
+    padding-left: 8px;
+    color: #888;
+}
+.graph-player-tag .bouton-retirer:hover {
+    color: #dc3545;
+}
+
+/* NOUVEAU : Conteneur pour les contrôles d'ajout */
+.add-graph-player-controls {
+    display: flex;
+    width: 100%;
+    gap: 10px;
+    align-items: center;
+}
+.add-graph-player-controls select {
+    flex-grow: 1; 
+}
+.add-graph-player-controls button {
+    flex-grow: 0;
+    width: 40px; 
+    margin-top: 0;
+    padding: 10px 0;
+    font-size: 1.2em;
+}
