@@ -11,8 +11,9 @@ let joueursRecents = []; // Pour les suggestions
 let allHistoryData = []; // Cache pour l'historique
 
 let monGraphiquePosition = null;
-let joueursSurGraphique = []; // Garde en mémoire les joueurs sur le graphique
+let joueursSurGraphique = [];
 const COULEURS_GRAPH = ['#36A2EB', '#FF6384', '#4BC0C0', '#FFCE56', '#9966FF', '#FF9F40'];
+
 
 let sequenceForceStop = false;
 let currentStepSkipper = null;
@@ -86,7 +87,6 @@ const statsTopJeuxListe = document.querySelector('#stats-top-jeux ol');
 const statsJeuxFrequenceListe = document.querySelector('#stats-jeux-frequence ol');
 const statsJoueursPodiumListe = document.querySelector('#stats-joueurs-podium ol');
 const addPlayerToGraphBtn = document.getElementById('add-player-to-graph-btn');
-// NOUVEAU : Sélecteur pour la liste des tags de joueurs
 const graphPlayersList = document.getElementById('graph-players-list');
 
 
@@ -225,7 +225,8 @@ auth.onAuthStateChanged(user => {
         chargerCategoriesConnues();
         chargerJoueursRecents();
         
-        showPage('page-new-game'); 
+        // *** MODIFIÉ : Page d'accueil par défaut ***
+        showPage('page-history-grid'); 
     } else {
         currentUser = null;
         authEcran.classList.remove('cache');
@@ -291,7 +292,6 @@ async function chargerHistoriqueParties() {
     }
 }
 
-// *** MODIFIÉE (REQ 1 & 2) ***
 function afficherStatsGlobales() {
     if (allHistoryData.length === 0) return;
 
@@ -303,7 +303,7 @@ function afficherStatsGlobales() {
     });
     const jeuxFrequenceTries = Object.entries(partiesParJeu)
         .sort(([, a], [, b]) => b - a)
-        .slice(0, 3); // Top 3
+        .slice(0, 3); 
 
     statsJeuxFrequenceListe.innerHTML = "";
     jeuxFrequenceTries.forEach(([nom, count]) => {
@@ -315,7 +315,6 @@ function afficherStatsGlobales() {
     // 2. Calcul "Top Joueurs" (Apparitions)
     const compteJoueurs = {};
     allHistoryData.forEach(partie => {
-        // Assure-toi que joueursComplets existe, sinon utilise classement
         const joueursDeLaPartie = partie.joueursComplets || partie.classement;
         joueursDeLaPartie.forEach(joueur => {
             compteJoueurs[joueur.nom] = (compteJoueurs[joueur.nom] || 0) + 1;
@@ -323,7 +322,7 @@ function afficherStatsGlobales() {
     });
     const joueursTries = Object.entries(compteJoueurs)
         .sort(([, a], [, b]) => b - a)
-        .slice(0, 3); // Top 3
+        .slice(0, 3);
 
     statsJoueursPodiumListe.innerHTML = "";
     joueursTries.forEach(([nom, count]) => {
@@ -338,7 +337,7 @@ function afficherStatsGlobales() {
     allHistoryData.forEach(partie => {
         const nomJeu = partie.nomJeu || "Parties";
         const totalJoueurs = partie.classement.length;
-        if (totalJoueurs <= 1) return; // Ignore les parties solo
+        if (totalJoueurs <= 1) return;
 
         if (!statsPerfJeu[nomJeu]) {
             statsPerfJeu[nomJeu] = { totalPctSum: 0, gameCount: 0 };
@@ -349,18 +348,17 @@ function afficherStatsGlobales() {
             const positionPct = (totalJoueurs - rang) / (totalJoueurs - 1);
             statsPerfJeu[nomJeu].totalPctSum += positionPct;
         });
-        statsPerfJeu[nomJeu].gameCount += totalJoueurs; // On compte par "entrée" de joueur
+        statsPerfJeu[nomJeu].gameCount += totalJoueurs;
     });
 
-    // Calcule la moyenne finale pour chaque jeu
     const jeuxPerfTries = Object.entries(statsPerfJeu)
         .map(([nom, data]) => ({
             nom: nom,
-            avg: (data.totalPctSum / data.gameCount) * 100 // Moyenne en %
+            avg: (data.totalPctSum / data.gameCount) * 100
         }))
-        .filter(jeu => !isNaN(jeu.avg)) // Filtre les NaN si gameCount était 0
-        .sort((a, b) => b.avg - a.avg) // Tri par % descendant
-        .slice(0, 3); // Top 3
+        .filter(jeu => !isNaN(jeu.avg))
+        .sort((a, b) => b.avg - a.avg)
+        .slice(0, 3);
 
     statsTopJeuxListe.innerHTML = "";
     jeuxPerfTries.forEach(jeu => {
@@ -371,12 +369,11 @@ function afficherStatsGlobales() {
 }
 
 
-// *** MODIFIÉE (REQ 3) ***
 function afficherDetailsHistoriqueJeu(nomJeu) {
     historyDetailsTitle.textContent = `Historique pour : ${nomJeu}`;
     listeHistoriquePartiesDetails.innerHTML = '';
-    joueursSurGraphique = []; // Reset le graphique
-    mettreAJourTagsGraphique(); // Vide les tags
+    joueursSurGraphique = [];
+    mettreAJourTagsGraphique(); 
 
     const partiesDeCeJeu = allHistoryData
         .filter(partie => (partie.nomJeu || "Parties") === nomJeu)
@@ -391,7 +388,7 @@ function afficherDetailsHistoriqueJeu(nomJeu) {
         });
     });
 
-    historyPlayerSelect.innerHTML = ''; // Vider
+    historyPlayerSelect.innerHTML = '';
     joueursUniques.forEach(nom => {
         const option = document.createElement('option');
         option.value = nom;
@@ -399,15 +396,14 @@ function afficherDetailsHistoriqueJeu(nomJeu) {
         historyPlayerSelect.appendChild(option);
     });
 
-    // Trouver le joueur par défaut (le plus de parties)
     const joueurParDefaut = Object.entries(comptePartiesJoueur)
-        .sort(([, a], [, b]) => b - a)[0]; // [nom, count]
+        .sort(([, a], [, b]) => b - a)[0];
 
     if (joueurParDefaut) {
         const nomJoueurDefaut = joueurParDefaut[0];
         historyPlayerSelect.value = nomJoueurDefaut;
         joueursSurGraphique.push(nomJoueurDefaut);
-        mettreAJourTagsGraphique(); // AFFICHE LE TAG PAR DÉFAUT
+        mettreAJourTagsGraphique();
         redessinerGraphiquePosition(partiesDeCeJeu);
     } else {
         if (monGraphiquePosition) {
@@ -416,7 +412,6 @@ function afficherDetailsHistoriqueJeu(nomJeu) {
         }
     }
 
-    // Afficher la liste des parties
     partiesDeCeJeu.forEach(partie => {
         const datePartie = new Date(partie.date);
         const dateStr = datePartie.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -447,10 +442,9 @@ function afficherDetailsHistoriqueJeu(nomJeu) {
     showPage('page-history-details');
 }
 
-// *** NOUVELLE FONCTION POUR LES TAGS GRAPHIQUE (REQ 3) ***
 function mettreAJourTagsGraphique() {
     if (!graphPlayersList) return;
-    graphPlayersList.innerHTML = ''; // Clear list
+    graphPlayersList.innerHTML = ''; 
 
     joueursSurGraphique.forEach(nom => {
         const tag = document.createElement('span');
@@ -466,13 +460,12 @@ function mettreAJourTagsGraphique() {
         retirerBtn.title = `Retirer ${nom} du graphique`;
 
         retirerBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Empêche le clic de faire autre chose
+            e.stopPropagation();
             const nomARetirer = retirerBtn.dataset.nom;
             joueursSurGraphique = joueursSurGraphique.filter(j => j !== nomARetirer);
             
-            mettreAJourTagsGraphique(); // Met à jour les tags
+            mettreAJourTagsGraphique();
             
-            // Redessine le graphique
             const nomJeu = historyDetailsTitle.textContent.replace('Historique pour : ', '');
             const partiesDeCeJeu = allHistoryData
                 .filter(partie => (partie.nomJeu || "Parties") === nomJeu);
@@ -486,28 +479,23 @@ function mettreAJourTagsGraphique() {
 }
 
 
-// *** MODIFIÉE (REQ 3) ***
 function redessinerGraphiquePosition(parties) {
     if (monGraphiquePosition) {
         monGraphiquePosition.destroy();
     }
 
-    // S'il n'y a plus de joueurs, on ne dessine rien
     if (joueursSurGraphique.length === 0) {
         return;
     }
 
-    // 1. Trouver toutes les parties où AU MOINS UN des joueurs sélectionnés a joué
     const partiesFiltrees = parties
         .filter(partie => partie.classement.some(j => joueursSurGraphique.includes(j.nom)))
-        .sort((a, b) => new Date(a.date) - new Date(b.date)); // Tri chronologique
+        .sort((a, b) => new Date(a.date) - new Date(b.date)); 
 
     if (partiesFiltrees.length === 0) return;
 
-    // 2. Créer les labels
     const labels = partiesFiltrees.map((partie, index) => `Partie ${index + 1}`);
 
-    // 3. Créer les datasets (un par joueur)
     const datasets = joueursSurGraphique.map((nomJoueur, index) => {
         const dataPoints = [];
         
@@ -526,7 +514,7 @@ function redessinerGraphiquePosition(parties) {
                 }
                 dataPoints.push(positionPct);
             } else {
-                dataPoints.push(null); // Trou dans les données
+                dataPoints.push(null);
             }
         });
 
@@ -538,11 +526,10 @@ function redessinerGraphiquePosition(parties) {
             backgroundColor: couleur + '33',
             fill: false,
             tension: 0.1,
-            spanGaps: true, // Relie les points par dessus les 'null'
+            spanGaps: true, 
         };
     });
 
-    // 4. Dessiner le graphique
     monGraphiquePosition = new Chart(canvasGraphiquePosition, {
         type: 'line',
         data: { labels: labels, datasets: datasets },
@@ -584,7 +571,7 @@ historyGridJeux.addEventListener('click', (e) => {
 historyBackBtn.addEventListener('click', () => {
     showPage('page-history-grid');
     joueursSurGraphique = [];
-    mettreAJourTagsGraphique(); // Vide les tags
+    mettreAJourTagsGraphique();
     if (monGraphiquePosition) {
         monGraphiquePosition.destroy();
         monGraphiquePosition = null;
@@ -632,7 +619,6 @@ listeHistoriquePartiesDetails.addEventListener('click', async (e) => {
     }
 });
 
-// *** MODIFIÉ (REQ 3) ***
 addPlayerToGraphBtn.addEventListener('click', () => {
     const nomJoueur = historyPlayerSelect.value;
     if (!nomJoueur) return;
@@ -640,7 +626,7 @@ addPlayerToGraphBtn.addEventListener('click', () => {
     if (!joueursSurGraphique.includes(nomJoueur)) {
         joueursSurGraphique.push(nomJoueur);
         
-        mettreAJourTagsGraphique(); // Met à jour les tags
+        mettreAJourTagsGraphique();
         
         const nomJeu = historyDetailsTitle.textContent.replace('Historique pour : ', '');
         const partiesDeCeJeu = allHistoryData
