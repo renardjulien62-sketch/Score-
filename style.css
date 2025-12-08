@@ -560,57 +560,60 @@ button:disabled {
         display: flex;
         flex-direction: column;
         height: 100vh;
-        overflow: hidden; /* Empêche le double scroll */
+        overflow: hidden; 
     }
 
-    /* 2. HEADER : Prend toute la largeur */
+    /* 2. HEADER */
     #main-header {
-        grid-column: auto;
-        grid-row: auto;
         width: 100%;
         padding: 0 10px;
         box-sizing: border-box;
+        justify-content: center; /* Centre le titre */
     }
     #main-title {
-        font-size: 1.5em; /* Titre un peu plus petit */
+        font-size: 1.5em; 
     }
 
-    /* 3. NAVIGATION : Devient une barre horizontale en haut (sous le header) */
+    /* 3. NAVIGATION (Le fameux bandeau) */
     #side-nav {
         width: 100%;
         height: auto;
         border-right: none;
         border-bottom: 2px solid #663C1F;
         padding: 5px;
-        flex-direction: row;
+        
+        /* C'est ici que la magie opère : Flexbox horizontal */
+        display: flex;
+        flex-direction: row; 
         align-items: center;
-        overflow-x: auto; /* Permet de scroller horizontalement si le menu est long */
-        white-space: nowrap;
-        background-color: #FDFBD4; /* On garde le fond crème */
+        justify-content: space-between; /* Espace entre les liens et le bouton */
+        
+        overflow-x: auto; /* Permet de scroller si ça dépasse */
+        background-color: #D9D7B6;
         box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         z-index: 999;
         flex-shrink: 0;
     }
 
-    /* On cache le gros logo sur mobile pour gagner de la place */
+    /* On cache le gros logo sur mobile */
     #nav-logo {
         display: none;
     }
 
-    /* Liens du menu en ligne */
+    /* Les liens de navigation */
     #nav-links {
         flex-direction: row;
         gap: 5px;
-        width: 100%;
-        justify-content: space-around; /* Répartir les liens */
+        align-items: center;
     }
 
     .nav-link {
         padding: 8px 10px;
-        font-size: 0.9em;
+        font-size: 0.85em; /* Un peu plus petit */
         border-left: none;
         border-bottom: 3px solid transparent;
         text-align: center;
+        white-space: nowrap; /* Empêche le texte de passer à la ligne */
     }
 
     .nav-link.active {
@@ -619,24 +622,39 @@ button:disabled {
         background-color: transparent;
     }
 
-    /* Infos utilisateur (email + déconnexion) masqués ou simplifiés */
+    /* 4. BLOC UTILISATEUR (Correction du problème) */
     #user-info-nav {
-        display: none; /* On cache l'email pour gagner de la place */
+        width: auto; /* Ne prend plus toute la largeur ! */
+        border-top: none; /* Enlève la ligne de séparation */
+        padding: 0 10px;
+        display: flex;
+        align-items: center;
     }
-    /* On pourrait ajouter un petit bouton de déconnexion dans le header plus tard si besoin */
+
+    /* On cache l'email sur mobile pour gagner de la place */
+    #user-info-nav p {
+        display: none; 
+    }
+
+    /* On garde juste un petit bouton de déconnexion */
+    #user-info-nav button {
+        width: auto;
+        padding: 5px 10px;
+        font-size: 0.8em;
+        background-color: #dc3545;
+        white-space: nowrap;
+    }
 
 
-    /* 4. CONTENU PRINCIPAL : Prend toute la place restante */
+    /* 5. CONTENU PRINCIPAL */
     #main-content {
         width: 100%;
         padding: 15px;
-        padding-bottom: 80px; /* Espace pour scroller jusqu'au bout */
+        padding-bottom: 80px; 
     }
 
-    /* 5. PAGE SCORE : Empilement vertical */
+    /* 6. RESTE DU STYLE (Score, Inputs...) */
     .score-main-container {
-        flex-direction: column-reverse; /* Contrôles en premier ou graphique en premier ? */
-        /* Ici je laisse normal : Graphique en haut, contrôles en bas */
         flex-direction: column; 
     }
 
@@ -650,10 +668,9 @@ button:disabled {
         padding-top: 20px;
     }
 
-    /* 6. FORMULAIRES & INPUTS : Adaptés aux doigts */
     .input-group, .add-player-group {
         flex-direction: column;
-        align-items: stretch; /* Tout prend la largeur max */
+        align-items: stretch;
     }
 
     .player-input-row, .player-color-row {
@@ -665,12 +682,11 @@ button:disabled {
     input[type="email"], 
     input[type="password"], 
     select {
-        width: 100%; /* Champs en pleine largeur */
+        width: 100%;
         box-sizing: border-box;
         margin-bottom: 5px;
     }
 
-    /* Boutons plus gros pour le tactile */
     button {
         padding: 12px 20px;
         font-size: 1em;
@@ -678,13 +694,13 @@ button:disabled {
         margin-top: 10px;
     }
 
-    /* Boutons spécifiques (Amis, Ajout) */
+    /* Exceptions pour les petits boutons */
     .add-graph-player-controls button,
-    .friend-actions button {
-        width: auto; /* On garde les petits boutons carrés petits */
+    .friend-actions button,
+    #user-info-nav button {
+        width: auto; 
     }
 
-    /* 7. STATS : Une seule colonne */
     .stats-container {
         flex-direction: column;
     }
@@ -692,25 +708,8 @@ button:disabled {
         width: 100%;
     }
 
-    /* 8. TABLEAU DES SCORES */
-    .classement-table {
-        font-size: 0.9em;
-    }
-    .classement-table th, .classement-table td {
-        padding: 8px 5px;
-    }
-
-    /* 9. GRAPHIQUE */
-    .graphique-container {
-        padding: 5px;
-        overflow: hidden;
-    }
-    
-    /* 10. MODAL AUTHENTIFICATION */
     #auth-ecran {
-        width: 95%;
+        width: 90%;
         padding: 15px;
     }
 }
-.add-graph-player-controls select { flex-grow: 1; }
-.add-graph-player-controls button { flex-grow: 0; width: 40px; margin-top: 0; padding: 10px 0; font-size: 1.2em; }
