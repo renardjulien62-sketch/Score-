@@ -1,1094 +1,552 @@
-// --- VARIABLES GLOBALES ---
-let joueurs = [];
-let scoresSecrets = false;
-let mancheActuelle = 0;
-let lowScoreWins = true;
-let monGraphique = null;
-let classementFinal = [];
-let nomJeuActuel = "Partie";
-let categoriesJeuxConnues = []; 
-let joueursRecents = []; 
-let allHistoryData = []; 
-let mesAmis = []; 
+/* --- 1. FONTS ET STRUCTURE DE BASE --- */
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap');
 
-let monGraphiquePosition = null;
-let joueursSurGraphique = [];
-const COULEURS_GRAPH = ['#36A2EB', '#FF6384', '#4BC0C0', '#FFCE56', '#9966FF', '#FF9F40'];
-
-let sequenceForceStop = false;
-let currentStepSkipper = null;
-
-let conditionsArret = {
-    score_limite: { active: false, valeur: 0 },
-    score_relatif: { active: false, valeur: 0 },
-    manche_total: { active: false, mancheCible: 0 },
-    manche_restante: { active: false, mancheCible: 0 }
-};
-
-const inputIdMap = {
-    'score_limite': 'score-limite',
-    'score_relatif': 'score-relatif',
-    'manche_total': 'nb-manches-total',
-    'manche_restante': 'nb-manches-restantes'
-};
-
-// --- SÉLECTION DES ÉLÉMENTS HTML ---
-const authEcran = document.getElementById('auth-ecran');
-const appLayout = document.getElementById('app-layout');
-const userEmailNav = document.getElementById('user-email-nav');
-const logoutBtn = document.getElementById('auth-logout');
-const navLinks = document.querySelectorAll('.nav-link');
-const mainContent = document.getElementById('main-content');
-const allPages = document.querySelectorAll('.page-content');
-const historyGridJeux = document.getElementById('history-grid-jeux');
-const historyDetailsTitle = document.getElementById('history-details-title');
-const historyBackBtn = document.getElementById('history-back-btn');
-const listeHistoriquePartiesDetails = document.getElementById('liste-historique-parties-details');
-
-const nomJeuConfigInput = document.getElementById('nom-jeu-config');
-const datalistJeux = document.getElementById('datalist-jeux');
-const nomJoueurInput = document.getElementById('nom-joueur');
-const ajouterBouton = document.getElementById('ajouter-joueur');
-const suggestionsJoueursDiv = document.getElementById('suggestions-joueurs');
-const listeSuggestionsJoueurs = document.getElementById('liste-suggestions-joueurs');
-const demarrerBouton = document.getElementById('demarrer-partie');
-const listeJoueursConf = document.getElementById('liste-joueurs-conf');
-const scoreAffichageDiv = document.getElementById('score-affichage');
-const saisiePointsDiv = document.getElementById('saisie-points');
-const validerTourBouton = document.getElementById('valider-tour');
-const annulerTourBouton = document.getElementById('annuler-tour');
-
-const modeSecretConfig = document.getElementById('mode-secret-config');
-const arreterMaintenantBouton = document.getElementById('arreter-maintenant');
-const canvasGraphique = document.getElementById('graphique-scores');
-const couleurJoueurInput = document.getElementById('couleur-joueur');
-const revealEcran = document.getElementById('reveal-ecran');
-const revealContent = document.getElementById('reveal-content');
-const revealRang = document.getElementById('reveal-rang');
-const revealNom = document.getElementById('reveal-nom');
-const revealScore = document.getElementById('reveal-score');
-const skipAllBtn = document.getElementById('skip-all-btn');
-const retourAccueilBtn = document.getElementById('retour-accueil-btn');
-const manchesPasseesAffichage = document.getElementById('manches-passees');
-const manchesRestantesAffichageDiv = document.getElementById('manches-restantes-affichage');
-const manchesRestantesAffichage = document.getElementById('manches-restantes');
-const pointsRestantsAffichageDiv = document.getElementById('points-restants-affichage');
-const pointsRestantsAffichage = document.getElementById('points-restants');
-const conditionCheckboxes = document.querySelectorAll('.condition-checkbox');
-const scoreLimiteInput = document.getElementById('score-limite');
-const scoreRelatifInput = document.getElementById('score-relatif');
-const nbManchesTotalInput = document.getElementById('nb-manches-total');
-const nbManchesRestantesInput = document.getElementById('nb-manches-restantes');
-const listePartiesSauvegardees = document.getElementById('liste-parties-sauvegardees');
-
-const historyPlayerSelect = document.getElementById('history-player-select');
-const canvasGraphiquePosition = document.getElementById('graphique-position-details');
-const statsTopJeuxListe = document.querySelector('#stats-top-jeux ol');
-const statsJeuxFrequenceListe = document.querySelector('#stats-jeux-frequence ol');
-const statsJoueursPodiumListe = document.querySelector('#stats-joueurs-podium ol');
-const addPlayerToGraphBtn = document.getElementById('add-player-to-graph-btn');
-const graphPlayersList = document.getElementById('graph-players-list');
-
-const friendEmailInput = document.getElementById('friend-email-input');
-const friendNicknameInput = document.getElementById('friend-nickname-input');
-const friendColorInput = document.getElementById('friend-color-input');
-const btnAddFriend = document.getElementById('btn-add-friend');
-const friendsListContainer = document.getElementById('friends-list-container');
-const friendAddMsg = document.getElementById('friend-add-msg');
-const selectAmiAjout = document.getElementById('select-ami-ajout');
-
-
-// --- NAVIGATION ---
-function showPage(pageId) {
-    allPages.forEach(page => page.classList.add('cache'));
-    const pageToShow = document.getElementById(pageId);
-    if (pageToShow) {
-        pageToShow.classList.remove('cache');
-    }
-    navLinks.forEach(link => {
-        link.classList.toggle('active', link.dataset.page === pageId);
-    });
-    if (pageId === 'page-history-details') {
-        document.querySelector('.nav-link[data-page="page-history-grid"]').classList.add('active');
-    }
+html, body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Lato', Arial, sans-serif;
+    background-color: #FDFBD4; /* Fond Crème */
+    height: 100%;
 }
 
-// --- FONCTIONS UTILITAIRES ---
-function pause(ms) { return new Promise(resolve => { const timer = setTimeout(() => { currentStepSkipper = null; resolve(); }, ms); currentStepSkipper = () => { clearTimeout(timer); currentStepSkipper = null; resolve(); }; }); }
-function attendreFinAnimation(element) { return new Promise(resolve => { const onAnimEnd = () => { currentStepSkipper = null; resolve(); }; element.addEventListener('animationend', onAnimEnd, { once: true }); currentStepSkipper = () => { element.removeEventListener('animationend', onAnimEnd); currentStepSkipper = null; resolve(); }; }); }
-function calculerRangs(joueursTries) { let rangActuel = 0; let scorePrecedent = null; let nbExAequo = 1; joueursTries.forEach((joueur, index) => { if (joueur.scoreTotal !== scorePrecedent) { rangActuel += nbExAequo; nbExAequo = 1; } else { nbExAequo++; } joueur.rang = rangActuel; scorePrecedent = joueur.scoreTotal; }); return joueursTries; }
-function retirerJoueur(index) { joueurs.splice(index, 1); mettreAJourListeJoueurs(); verifierPeutDemarrer(); }
-function mettreAJourListeJoueurs() { listeJoueursConf.innerHTML = ''; if (joueurs.length === 0) { listeJoueursConf.innerHTML = '<p>Ajoutez au moins deux joueurs pour commencer.</p>'; return; } joueurs.forEach((joueur, index) => { const tag = document.createElement('div'); tag.className = 'joueur-tag'; const swatch = document.createElement('span'); swatch.className = 'joueur-couleur-swatch'; swatch.style.backgroundColor = joueur.couleur; const nom = document.createElement('span'); nom.textContent = joueur.nom; const retirerBtn = document.createElement('button'); retirerBtn.className = 'bouton-retirer'; retirerBtn.innerHTML = '&times;'; retirerBtn.title = `Retirer ${joueur.nom}`; retirerBtn.addEventListener('click', () => { retirerJoueur(index); }); tag.appendChild(swatch); tag.appendChild(nom); tag.appendChild(retirerBtn); listeJoueursConf.appendChild(tag); }); }
-function verifierPeutDemarrer() { demarrerBouton.disabled = joueurs.length < 2; }
-function genererChampsSaisie() { saisiePointsDiv.innerHTML = ''; joueurs.forEach((joueur, index) => { const div = document.createElement('div'); div.className = 'saisie-item'; div.innerHTML = ` <label for="score-${index}"> <span class="score-couleur-swatch" style="background-color: ${joueur.couleur};"></span> ${joueur.nom} : </label> <input type="number" id="score-${index}" value="0"> `; saisiePointsDiv.appendChild(div); }); }
-function mettreAJourScoresAffichage() { scoreAffichageDiv.innerHTML = ''; let listePourAffichage = []; if (!scoresSecrets) { let joueursTries = [...joueurs].sort((a, b) => { return lowScoreWins ? a.scoreTotal - b.scoreTotal : b.scoreTotal - a.scoreTotal; }); listePourAffichage = calculerRangs(joueursTries); } else { listePourAffichage = joueurs; } let html = '<table class="classement-table">'; html += '<thead><tr><th>#</th><th>Joueur</th><th>Total</th></tr></thead>'; html += '<tbody>'; listePourAffichage.forEach((joueur) => { const rangAffichage = joueur.rang && !scoresSecrets ? joueur.rang : '-'; html += ` <tr> <td>${rangAffichage}</td> <td> <span class="score-couleur-swatch" style="background-color: ${joueur.couleur};"></span> ${joueur.nom} </td> <td class="score-total">${scoresSecrets ? '???' : `${joueur.scoreTotal} pts`}</td> </tr> `; }); html += '</tbody></table>'; scoreAffichageDiv.innerHTML = html; }
-function mettreAJourCompteurs() { manchesPasseesAffichage.textContent = mancheActuelle; let restantesManches = Infinity; let afficherManchesRestantes = false; if (conditionsArret.manche_total.active) { const totalManches = conditionsArret.manche_total.mancheCible; restantesManches = Math.max(0, totalManches - mancheActuelle); afficherManchesRestantes = true; } if (conditionsArret.manche_restante.active) { const mancheCible = conditionsArret.manche_restante.mancheCible; const restantesDynamiques = Math.max(0, mancheCible - mancheActuelle); restantesManches = Math.min(restantesManches, restantesDynamiques); afficherManchesRestantes = true; } if (afficherManchesRestantes) { manchesRestantesAffichage.textContent = restantesManches; manchesRestantesAffichageDiv.classList.remove('cache'); } else { manchesRestantesAffichageDiv.classList.add('cache'); } let pointsMinRestants = Infinity; let afficherPointsRestants = false; if (conditionsArret.score_limite.active) { const scoreMax = Math.max(...joueurs.map(j => j.scoreTotal)); const restantsAbsolu = Math.max(0, conditionsArret.score_limite.valeur - scoreMax); pointsMinRestants = Math.min(pointsMinRestants, restantsAbsolu); afficherPointsRestants = true; } if (conditionsArret.score_relatif.active) { joueurs.forEach(joueur => { let limiteCible = (joueur.scoreRelatifPivot || 0) + conditionsArret.score_relatif.valeur; const restantsRelatif = Math.max(0, limiteCible - joueur.scoreTotal); pointsMinRestants = Math.min(pointsMinRestants, restantsRelatif); }); afficherPointsRestants = true; } if (afficherPointsRestants) { pointsRestantsAffichage.textContent = pointsMinRestants; pointsRestantsAffichageDiv.classList.remove('cache'); } else { pointsRestantsAffichageDiv.classList.add('cache'); } }
-function verifierConditionsArret() { if (validerTourBouton.disabled) return; let doitTerminer = false; if (conditionsArret.score_limite.active && conditionsArret.score_limite.valeur > 0) { if (joueurs.some(j => j.scoreTotal >= conditionsArret.score_limite.valeur)) { doitTerminer = true; } } if (conditionsArret.score_relatif.active && conditionsArret.score_relatif.valeur > 0) { joueurs.forEach(joueur => { let limiteCible = (joueur.scoreRelatifPivot || 0) + conditionsArret.score_relatif.valeur; if (joueur.scoreTotal >= limiteCible) { doitTerminer = true; } }); } if (conditionsArret.manche_total.active && mancheActuelle >= conditionsArret.manche_total.mancheCible && conditionsArret.manche_total.mancheCible > 0) { doitTerminer = true; } if (conditionsArret.manche_restante.active && mancheActuelle >= conditionsArret.manche_restante.mancheCible && conditionsArret.manche_restante.mancheCible > 0) { doitTerminer = true; } if (doitTerminer) { terminerPartie(); } }
-function construirePodiumFinal() { currentStepSkipper = null; const podiumMap = { 1: document.getElementById('podium-1'), 2: document.getElementById('podium-2'), 3: document.getElementById('podium-3') }; Object.values(podiumMap).forEach(el => el.classList.remove('cache')); const premier = classementFinal.filter(j => j.rang === 1); const deuxieme = classementFinal.filter(j => j.rang === 2); const troisieme = classementFinal.filter(j => j.rang === 3); const remplirPlace = (element, joueursPlace) => { if (joueursPlace.length > 0) { const joueurRef = joueursPlace[0]; const noms = joueursPlace.map(j => j.nom).join(' & '); element.querySelector('.podium-nom').textContent = noms; element.querySelector('.podium-score').textContent = `${joueurRef.scoreTotal} pts`; element.style.borderColor = joueurRef.couleur; element.style.boxShadow = `0 0 15px ${joueurRef.couleur}80`; } else { element.classList.add('cache'); } }; remplirPlace(podiumMap[1], premier); remplirPlace(podiumMap[2], deuxieme); remplirPlace(podiumMap[3], troisieme); const autresListe = document.getElementById('autres-joueurs-liste'); autresListe.innerHTML = ''; const autresJoueurs = classementFinal.filter(j => j.rang > 3); if(autresJoueurs.length === 0) { document.getElementById('autres-joueurs').classList.add('cache'); } else { document.getElementById('autres-joueurs').classList.remove('cache'); autresJoueurs.sort((a, b) => a.rang - b.rang); autresJoueurs.forEach((joueur) => { const li = document.createElement('li'); li.innerHTML = ` <span class="score-couleur-swatch" style="background-color: ${joueur.couleur};"></span> <strong>${joueur.rang}. ${joueur.nom}</strong> (${joueur.scoreTotal} pts) `; autresListe.appendChild(li); }); } const graphContainer = document.querySelector('.graphique-container'); const graphPlaceholder = document.getElementById('graphique-final-container'); if (graphContainer && graphPlaceholder) { graphPlaceholder.innerHTML = ''; graphPlaceholder.appendChild(graphContainer); if (monGraphique) { monGraphique.resize(); } } }
-function majContenuReveal(rang, joueur, estExAequoPrecedent) { let rangTexte = `${rang}ème Place`; if (estExAequoPrecedent) { rangTexte = `Ex æquo ${rang}ème Place`; } if (rang === 3) rangTexte = `🥉 ${estExAequoPrecedent ? 'Ex æquo ' : ''}3ème Place`; if (rang === 1) rangTexte = `🥇 GAGNANT ${estExAequoPrecedent ? 'Ex æquo ' : ''}!`; revealRang.textContent = rangTexte; revealNom.textContent = joueur.nom; revealNom.style.color = joueur.couleur; revealScore.textContent = `${joueur.scoreTotal} points`; revealContent.classList.remove('is-revealed'); }
-async function demarrerSequenceReveal() { showPage('page-score'); revealEcran.classList.remove('cache'); let joueursAReveler = []; joueursAReveler.push(...classementFinal.filter(j => j.rang > 2).reverse()); joueursAReveler.push(...classementFinal.filter(j => j.rang === 1)); let rangPrecedent = null; for (const joueur of joueursAReveler) { if (sequenceForceStop) return; const rang = joueur.rang; const estExAequo = (rang === rangPrecedent); majContenuReveal(rang, joueur, estExAequo); revealContent.classList.add('slide-in-from-left'); await attendreFinAnimation(revealContent); revealContent.classList.remove('slide-in-from-left'); if (sequenceForceStop) return; await pause(1500); if (sequenceForceStop) return; revealContent.classList.add('shake-reveal'); await attendreFinAnimation(revealContent); revealContent.classList.remove('shake-reveal'); revealContent.classList.add('is-revealed'); if (sequenceForceStop) return; await pause(2500); if (sequenceForceStop) return; if (joueur !== joueursAReveler[joueursAReveler.length - 1]) { revealContent.classList.add('slide-out-to-right'); await attendreFinAnimation(revealContent); revealContent.classList.remove('slide-out-to-right', 'is-revealed'); } rangPrecedent = rang; } revealEcran.classList.add('cache'); showPage('page-podium'); construirePodiumFinal(); }
-function terminerPartie() { sequenceForceStop = false; validerTourBouton.disabled = true; arreterMaintenantBouton.disabled = true; const graphContainer = document.querySelector('.graphique-container'); if (graphContainer) { graphContainer.classList.remove('cache'); } let joueursTries = [...joueurs].sort((a, b) => { return lowScoreWins ? a.scoreTotal - b.scoreTotal : b.scoreTotal - a.scoreTotal; }); classementFinal = calculerRangs(joueursTries); sauvegarderHistoriquePartie(classementFinal); if (scoresSecrets) { scoresSecrets = false; mettreAJourScoresAffichage(); if (monGraphique) { monGraphique.data.labels = ['Manche 0']; monGraphique.data.datasets.forEach(dataset => { dataset.data = [0]; }); let scoreCumules = new Array(joueurs.length).fill(0); for (let i = 0; i < mancheActuelle; i++) { if(monGraphique.data.labels.length <= i + 1) { monGraphique.data.labels.push(`Manche ${i + 1}`); } joueurs.forEach((joueur, index) => { const scoreDeCeTour = joueur.scoresTour[i] || 0; scoreCumules[index] += scoreDeCeTour; monGraphique.data.datasets[index].data[i+1] = scoreCumules[index]; }); } const maxDataLength = Math.max(...monGraphique.data.datasets.map(d => d.data.length)); while(monGraphique.data.labels.length < maxDataLength) { monGraphique.data.labels.push(`Manche ${monGraphique.data.labels.length}`); } monGraphique.update(); monGraphique.resize(); } alert("FIN DE PARTIE : Les scores secrets sont révélés !"); setTimeout(demarrerSequenceReveal, 100); } else { mettreAJourScoresAffichage(); demarrerSequenceReveal(); } }
-
-// --- FONCTIONS GRAPHIQUE ---
-function genererCouleurAleatoire() { const couleurs = [ '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#E7E9ED', '#8036EB', '#FFAB91', '#81D4FA', '#FFF59D', '#A5D6A7' ]; let couleursPrises = joueurs.map(j => j.couleur.toUpperCase()); let couleurDispo = couleurs.find(c => !couleursPrises.includes(c)); if (couleurDispo) { return couleurDispo; } return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'); }
-function creerGraphique() { if (monGraphique) { monGraphique.destroy(); } const datasets = joueurs.map((joueur, index) => ({ label: joueur.nom, data: [0], borderColor: joueur.couleur, backgroundColor: joueur.couleur + '33', fill: false, tension: 0.1 })); monGraphique = new Chart(canvasGraphique, { type: 'line', data: { labels: ['Manche 0'], datasets: datasets }, options: { responsive: true, plugins: { legend: { position: 'top' }, title: { display: false } }, scales: { y: { title: { display: true, text: 'Points' } }, x: { title: { display: true, text: 'Manches' } } } } }); }
-function mettreAJourGraphique() { if (!monGraphique) { return; } const labelManche = 'Manche ' + mancheActuelle; if (!monGraphique.data.labels.includes(labelManche)) { monGraphique.data.labels.push(labelManche); } joueurs.forEach((joueur, index) => { if(monGraphique.data.datasets[index]) { if (monGraphique.data.datasets[index].data.length <= mancheActuelle) { monGraphique.data.datasets[index].data.push(joueur.scoreTotal); } else { monGraphique.data.datasets[index].data[mancheActuelle] = joueur.scoreTotal; } } }); monGraphique.update(); }
-function recreerGraphiqueFinal() { const graphContainer = document.querySelector('.graphique-container'); const graphPlaceholder = document.getElementById('graphique-final-container'); if (graphContainer && graphPlaceholder) { if (!graphPlaceholder.contains(graphContainer)) { graphPlaceholder.innerHTML = ''; graphPlaceholder.appendChild(graphContainer); } } if (monGraphique) { monGraphique.destroy(); } const datasets = joueurs.map((joueur, index) => ({ label: joueur.nom, data: [0], borderColor: joueur.couleur, backgroundColor: joueur.couleur + '33', fill: false, tension: 0.1 })); monGraphique = new Chart(canvasGraphique, { type: 'line', data: { labels: ['Manche 0'], datasets: datasets }, options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { title: { display: true, text: 'Points' } }, x: { title: { display: true, text: 'Manches' } } } } }); let scoreCumules = new Array(joueurs.length).fill(0); for (let i = 0; i < mancheActuelle; i++) { if(monGraphique.data.labels.length <= i + 1) { monGraphique.data.labels.push(`Manche ${i + 1}`); } joueurs.forEach((joueur, index) => { const scoreDeCeTour = (joueur.scoresTour && joueur.scoresTour[i]) ? joueur.scoresTour[i] : 0; scoreCumules[index] += scoreDeCeTour; if(monGraphique.data.datasets[index]) { monGraphique.data.datasets[index].data[i+1] = scoreCumules[index]; } }); } monGraphique.update(); monGraphique.resize(); }
-
-// --- GESTION DES ÉVÉNEMENTS (Conditions, Ajout Joueur) ---
-conditionCheckboxes.forEach(checkbox => { checkbox.addEventListener('change', (e) => { const type = e.target.dataset.type; const inputId = inputIdMap[type]; const input = document.getElementById(inputId); if (input) { input.disabled = !checkbox.checked; } mettreAJourConditionsArret(); mettreAJourCompteurs(); }); });
-[scoreLimiteInput, scoreRelatifInput, nbManchesTotalInput, nbManchesRestantesInput].forEach(input => { input.addEventListener('change', () => { mettreAJourConditionsArret(); mettreAJourCompteurs(); }); });
-function mettreAJourConditionsArret() { for (const key in conditionsArret) { conditionsArret[key].active = false; } document.querySelectorAll('.condition-checkbox:checked').forEach(checkbox => { const type = checkbox.dataset.type; conditionsArret[type].active = true; const inputId = inputIdMap[type]; const inputElement = document.getElementById(inputId); const valeur = parseInt(inputElement.value, 10) || 0; if (type === 'score_limite') { conditionsArret.score_limite.valeur = valeur; } else if (type === 'score_relatif') { conditionsArret[type].valeur = valeur; joueurs.forEach(j => { j.scoreRelatifPivot = j.scoreTotal; }); } else if (type === 'manche_total') { conditionsArret.manche_total.mancheCible = valeur; } else if (type === 'manche_restante') { conditionsArret.manche_restante.mancheCible = mancheActuelle + valeur; } }); }
-
-// MODIFIÉ : Ajouter Joueur (Prend en compte l'ami sélectionné)
-ajouterBouton.addEventListener('click', () => {
-    let nom = nomJoueurInput.value.trim();
-    let couleur = couleurJoueurInput.value;
-    let uidAmi = null;
-
-    // Vérifie si un ami est sélectionné
-    const selectedAmiIndex = selectAmiAjout.selectedIndex;
-    if (selectedAmiIndex > 0) { // Si ce n'est pas l'option par défaut
-        const option = selectAmiAjout.options[selectedAmiIndex];
-        nom = option.text; // Le nom affiché (pseudo)
-        uidAmi = option.value; // L'UID de l'ami
-        // Si l'ami a une couleur perso, on la prend
-        if (option.dataset.couleur) {
-             couleur = option.dataset.couleur;
-        }
-    }
-
-    if (nom && !joueurs.some(j => j.nom === nom)) {
-        joueurs.push({ 
-            nom: nom, 
-            couleur: couleur, 
-            scoreTotal: 0, 
-            scoresTour: [], 
-            scoreRelatifPivot: 0, 
-            rang: null,
-            uid: uidAmi 
-        });
-        
-        // Reset inputs
-        nomJoueurInput.value = '';
-        couleurJoueurInput.value = genererCouleurAleatoire();
-        selectAmiAjout.value = ""; // Reset select
-        
-        mettreAJourListeJoueurs();
-        verifierPeutDemarrer();
-    } else if (joueurs.some(j => j.nom === nom)) {
-        alert(`Le joueur "${nom}" existe déjà !`);
-    }
-});
-
-// Écouteur pour mettre à jour la couleur quand on sélectionne un ami
-selectAmiAjout.addEventListener('change', () => {
-    const selectedAmiIndex = selectAmiAjout.selectedIndex;
-    if (selectedAmiIndex > 0) {
-        const option = selectAmiAjout.options[selectedAmiIndex];
-        if (option.dataset.couleur) {
-            couleurJoueurInput.value = option.dataset.couleur;
-        }
-    } else {
-        couleurJoueurInput.value = genererCouleurAleatoire();
-    }
-});
-
-nomJoueurInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { ajouterBouton.click(); } });
-demarrerBouton.addEventListener('click', () => {
-    sequenceForceStop = false; if (joueurs.length < 2) return; 
-    nomJeuActuel = nomJeuConfigInput.value.trim() || "Partie";
-    scoresSecrets = modeSecretConfig.checked; 
-    const victoireChoix = document.querySelector('input[name="condition-victoire"]:checked').value; 
-    lowScoreWins = (victoireChoix === 'low'); 
-    mancheActuelle = 0;
-    
-    // Reset stats joueurs mais garde l'UID
-    joueurs.forEach(j => { j.scoreTotal = 0; j.scoresTour = []; j.scoreRelatifPivot = 0; j.rang = null; }); 
-    
-    if (currentUser) {
-        const userRef = db.collection('utilisateurs').doc(currentUser.uid);
-        const joueursRecentsRef = userRef.collection('joueursRecents');
-        joueurs.forEach(j => {
-            joueursRecentsRef.doc(j.nom).set({ nom: j.nom, couleur: j.couleur });
-        });
-        joueurs.forEach(j => {
-            const index = joueursRecents.findIndex(jr => jr.nom === j.nom);
-            if (index > -1) { joueursRecents[index].couleur = j.couleur; } else { joueursRecents.push({ nom: j.nom, couleur: j.couleur }); }
-        });
-        afficherSuggestionsJoueurs();
-    }
-    const graphContainer = document.querySelector('.graphique-container'); 
-    const graphOriginalParent = document.getElementById('page-score').querySelector('.score-gauche');
-    const inputTourDiv = document.getElementById('page-score').querySelector('.input-tour');
-    if (graphContainer && graphOriginalParent && inputTourDiv) { 
-        graphOriginalParent.insertBefore(graphContainer, inputTourDiv); 
-    }
-    if (scoresSecrets) { if (graphContainer) graphContainer.classList.add('cache'); } else { if (graphContainer) graphContainer.classList.remove('cache'); }
-    mettreAJourConditionsArret(); 
-    showPage('page-score');
-    genererChampsSaisie(); mettreAJourScoresAffichage(); mettreAJourCompteurs(); creerGraphique();
-    
-    sauvegarderPartieEnCours(true);
-});
-
-validerTourBouton.addEventListener('click', () => { 
-    if (validerTourBouton.disabled) return; 
-    mancheActuelle++; 
-    joueurs.forEach((joueur, index) => { 
-        const inputElement = document.getElementById(`score-${index}`); 
-        const points = parseInt(inputElement.value, 10) || 0; 
-        joueur.scoreTotal += points; 
-        joueur.scoresTour.push(points); 
-        inputElement.value = 0; 
-    }); 
-    mettreAJourScoresAffichage(); 
-    mettreAJourCompteurs(); 
-    mettreAJourGraphique(); 
-    verifierConditionsArret(); 
-    
-    sauvegarderPartieEnCours();
-});
-
-annulerTourBouton.addEventListener('click', () => {
-    if (mancheActuelle > 0) {
-        if (confirm("Voulez-vous vraiment annuler le dernier tour pour le corriger ?")) {
-            mancheActuelle--;
-            
-            joueurs.forEach((joueur, index) => {
-                const dernierScore = joueur.scoresTour.pop();
-                
-                if (dernierScore !== undefined) {
-                    joueur.scoreTotal -= dernierScore;
-                    
-                    const inputElement = document.getElementById(`score-${index}`);
-                    if (inputElement) {
-                        inputElement.value = dernierScore;
-                    }
-                }
-            });
-
-            if (monGraphique) {
-                monGraphique.data.labels.pop(); 
-                monGraphique.data.datasets.forEach(dataset => {
-                    dataset.data.pop(); 
-                });
-                monGraphique.update();
-            }
-
-            mettreAJourScoresAffichage();
-            mettreAJourCompteurs();
-            sauvegarderPartieEnCours();
-        }
-    } else {
-        alert("Impossible d'annuler : aucun tour n'a été joué.");
-    }
-});
-
-
-arreterMaintenantBouton.addEventListener('click', terminerPartie);
-revealEcran.addEventListener('click', (e) => { if (e.target.closest('#skip-all-btn') || e.target.closest('#reveal-content')) { return; } if (currentStepSkipper) { currentStepSkipper(); } });
-skipAllBtn.addEventListener('click', () => {
-    sequenceForceStop = true; 
-    if (currentStepSkipper) { currentStepSkipper(); } 
-    revealEcran.classList.add('cache'); 
-    showPage('page-podium');
-    construirePodiumFinal(); 
-});
-retourAccueilBtn.addEventListener('click', () => {
-    showPage('page-ongoing-games');
-    const graphContainer = document.querySelector('.graphique-container');
-    const graphOriginalParent = document.getElementById('page-score').querySelector('.score-gauche');
-    const inputTourDiv = document.getElementById('page-score').querySelector('.input-tour');
-    if (graphContainer && graphOriginalParent && inputTourDiv) {
-        graphOriginalParent.insertBefore(graphContainer, inputTourDiv);
-        if (monGraphique) {
-            monGraphique.destroy(); 
-            monGraphique = null;
-        }
-    }
-});
-
-// --- INITIALISATION ---
-couleurJoueurInput.value = genererCouleurAleatoire();
-
-/* =================================================================
---- SECTION AUTHENTIFICATION ET SAUVEGARDE ---
-=================================================================
-*/
-
-const auth = firebase.auth(); 
-const authErreur = document.getElementById('auth-erreur');
-const signupBtn = document.getElementById('auth-signup');
-const loginBtn = document.getElementById('auth-login');
-const sauvegarderBtn = document.getElementById('sauvegarder-partie');
-const saveFeedback = document.getElementById('save-feedback');
-let partieIdActuelle = null; 
-let currentUser = null;
-
-function afficherAuthErreur(message) { authErreur.textContent = message; authErreur.classList.remove('cache'); }
-
-signupBtn.addEventListener('click', () => { 
-    const email = document.getElementById('auth-email').value; 
-    const password = document.getElementById('auth-password').value; 
-    auth.createUserWithEmailAndPassword(email, password)
-        .then((userCredential) => {
-            creerProfilPublic(userCredential.user);
-        })
-        .catch(err => { afficherAuthErreur(err.message); }); 
-});
-
-function creerProfilPublic(user) {
-    db.collection('users_public').doc(user.uid).set({
-        email: user.email,
-        uid: user.uid
-    }).then(() => {
-        console.log("Profil public créé");
-    }).catch(err => console.error("Erreur profil public", err));
+.cache {
+    display: none !important;
 }
 
-loginBtn.addEventListener('click', () => { const email = document.getElementById('auth-email').value; const password = document.getElementById('auth-password').value; auth.signInWithEmailAndPassword(email, password) .catch(err => { afficherAuthErreur(err.message); }); });
-logoutBtn.addEventListener('click', () => { auth.signOut(); });
-
-auth.onAuthStateChanged(user => {
-    if (user) {
-        currentUser = user;
-        userEmailNav.textContent = user.email;
-        authEcran.classList.add('cache');
-        appLayout.classList.remove('cache'); 
-        
-        creerProfilPublic(user);
-
-        chargerListeParties();
-        chargerHistoriqueParties();
-        chargerCategoriesConnues();
-        chargerJoueursRecents();
-        chargerAmis(); 
-        
-        showPage('page-new-game'); 
-    } else {
-        currentUser = null;
-        authEcran.classList.remove('cache');
-        appLayout.classList.add('cache');
-    }
-});
-
-// --- GESTION DES AMIS (MODIFIÉ POUR ÉDITION ET UPDATE HISTORIQUE) ---
-
-btnAddFriend.addEventListener('click', () => {
-    const email = friendEmailInput.value.trim();
-    const nickname = document.getElementById('friend-nickname-input').value.trim();
-    const color = document.getElementById('friend-color-input').value;
-
-    if (email) ajouterAmi(email, nickname, color);
-});
-
-function ajouterAmi(email, nickname, color) {
-    friendAddMsg.classList.remove('cache');
-    friendAddMsg.textContent = "Recherche...";
-    friendAddMsg.style.color = "blue";
-
-    db.collection('users_public').where('email', '==', email).get()
-    .then(snapshot => {
-        if (snapshot.empty) {
-            friendAddMsg.textContent = "Aucun utilisateur trouvé avec cet email.";
-            friendAddMsg.style.color = "red";
-            return;
-        }
-        
-        const amiDoc = snapshot.docs[0].data();
-        const amiUid = amiDoc.uid;
-        const amiEmail = amiDoc.email;
-
-        // Valeurs par défaut si non fournies
-        const finalNickname = nickname || amiEmail.split('@')[0];
-        const finalColor = color || genererCouleurAleatoire();
-
-        db.collection('utilisateurs').doc(currentUser.uid).collection('amis').doc(amiUid).set({
-            email: amiEmail,
-            uid: amiUid,
-            surnom: finalNickname,
-            couleur: finalColor,
-            dateAjout: new Date().toISOString()
-        }).then(() => {
-            friendAddMsg.textContent = "Ami ajouté !";
-            friendAddMsg.style.color = "green";
-            friendEmailInput.value = "";
-            document.getElementById('friend-nickname-input').value = ""; // Reset
-            chargerAmis();
-        });
-    })
-    .catch(err => {
-        console.error("Erreur ajout ami", err);
-        friendAddMsg.textContent = "Erreur lors de l'ajout.";
-        friendAddMsg.style.color = "red";
-    });
+/* --- 2. AUTHENTIFICATION --- */
+#auth-ecran {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 400px;
+    z-index: 200;
+    padding: 20px;
+    border: 1px solid #ddd;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+#auth-ecran h3 {
+    width: 100%;
+    text-align: center;
 }
 
-// *** MODIFIÉE : MET A JOUR L'HISTORIQUE ***
-async function sauvegarderAmi(uid, nouveauSurnom, nouvelleCouleur, ancienNom) {
-    if (!currentUser) return;
-    
-    // 1. Mise à jour de la liste d'amis
-    await db.collection('utilisateurs').doc(currentUser.uid).collection('amis').doc(uid).update({
-        surnom: nouveauSurnom,
-        couleur: nouvelleCouleur
-    });
-    
-    console.log("Ami mis à jour. Début mise à jour historique...");
-
-    // 2. Mise à jour RÉTROACTIVE de l'historique
-    const historyRef = db.collection('utilisateurs').doc(currentUser.uid).collection('historique');
-    const snapshot = await historyRef.get();
-
-    snapshot.forEach(doc => {
-        let data = doc.data();
-        let modified = false;
-
-        // Mise à jour dans joueursComplets
-        if (data.joueursComplets) {
-            data.joueursComplets = data.joueursComplets.map(j => {
-                // On vérifie par UID (si présent) ou par l'ancien nom (si pas d'UID)
-                if (j.uid === uid || (!j.uid && j.nom === ancienNom)) {
-                    j.nom = nouveauSurnom;
-                    j.couleur = nouvelleCouleur;
-                    // On ajoute l'UID s'il manquait
-                    if (!j.uid) j.uid = uid; 
-                    modified = true;
-                }
-                return j;
-            });
-        }
-
-        // Mise à jour dans le classement (pour l'affichage)
-        if (data.classement) {
-            data.classement = data.classement.map(j => {
-                if (j.uid === uid || (!j.uid && j.nom === ancienNom)) {
-                    j.nom = nouveauSurnom;
-                    j.couleur = nouvelleCouleur;
-                    if (!j.uid) j.uid = uid;
-                    modified = true;
-                }
-                return j;
-            });
-        }
-
-        if (modified) {
-            historyRef.doc(doc.id).update({
-                joueursComplets: data.joueursComplets,
-                classement: data.classement
-            }).then(() => console.log(`Partie ${doc.id} mise à jour.`));
-        }
-    });
-
-    chargerAmis(); 
-    chargerHistoriqueParties(); // Rafraichir l'historique
+/* --- 3. LAYOUT GÉNÉRAL (GRID) --- */
+#app-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    grid-template-rows: 60px 1fr;
+    height: 100vh;
 }
 
-function supprimerAmi(uid) {
-    if (!currentUser) return;
-    if(confirm("Voulez-vous vraiment supprimer cet ami ?")) {
-        db.collection('utilisateurs').doc(currentUser.uid).collection('amis').doc(uid).delete()
-        .then(() => {
-            console.log("Ami supprimé");
-            chargerAmis();
-        })
-        .catch(err => console.error("Erreur suppression ami", err));
-    }
+/* Bandeau du haut */
+#main-header {
+    grid-column: 2 / 3; 
+    grid-row: 1 / 2;
+    height: 60px;
+    background-color: #663C1F; /* Marron foncé */
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 20px;
+    z-index: 100;
 }
 
-function chargerAmis() {
-    if (!currentUser) return;
-    db.collection('utilisateurs').doc(currentUser.uid).collection('amis').get()
-    .then(snapshot => {
-        mesAmis = [];
-        friendsListContainer.innerHTML = "";
-        selectAmiAjout.innerHTML = '<option value="">-- Choisir un ami --</option>';
-
-        if (snapshot.empty) {
-            friendsListContainer.innerHTML = "<p>Vous n'avez pas encore d'amis.</p>";
-            return;
-        }
-
-        snapshot.forEach(doc => {
-            const ami = doc.data();
-            mesAmis.push(ami);
-
-            const pseudo = ami.surnom || ami.email.split('@')[0];
-            const couleur = ami.couleur || "#CCCCCC";
-
-            const div = document.createElement('div');
-            div.className = 'friend-item';
-            div.dataset.uid = ami.uid; 
-
-            const viewDiv = document.createElement('div');
-            viewDiv.className = 'friend-view';
-            viewDiv.innerHTML = `
-                <div class="friend-info">
-                    <span class="friend-color-swatch" style="background-color: ${couleur};"></span>
-                    <span>${pseudo}</span> 
-                    <span class="friend-email">(${ami.email})</span>
-                </div>
-                <div class="friend-actions">
-                    <button class="btn-icon btn-edit-friend"><i class="fa-solid fa-pencil"></i></button>
-                    <button class="btn-icon btn-delete-friend"><i class="fa-solid fa-trash"></i></button>
-                </div>
-            `;
-
-            const editDiv = document.createElement('div');
-            editDiv.className = 'friend-edit-form';
-            editDiv.innerHTML = `
-                <input type="text" class="edit-surnom" value="${pseudo}" placeholder="Surnom">
-                <input type="color" class="edit-couleur" value="${couleur}">
-                <button class="btn-save-friend"><i class="fa-solid fa-check"></i></button>
-                <button class="btn-cancel-friend"><i class="fa-solid fa-times"></i></button>
-            `;
-
-            div.appendChild(viewDiv);
-            div.appendChild(editDiv);
-            friendsListContainer.appendChild(div);
-
-            const btnEdit = viewDiv.querySelector('.btn-edit-friend');
-            const btnDelete = viewDiv.querySelector('.btn-delete-friend');
-            const btnSave = editDiv.querySelector('.btn-save-friend');
-            const btnCancel = editDiv.querySelector('.btn-cancel-friend');
-
-            btnEdit.addEventListener('click', () => {
-                viewDiv.style.display = 'none';
-                editDiv.style.display = 'flex';
-                editDiv.classList.add('active');
-            });
-            
-            btnDelete.addEventListener('click', () => {
-                supprimerAmi(ami.uid);
-            });
-
-            btnCancel.addEventListener('click', () => {
-                editDiv.style.display = 'none';
-                editDiv.classList.remove('active');
-                viewDiv.style.display = 'flex';
-                editDiv.querySelector('.edit-surnom').value = pseudo;
-                editDiv.querySelector('.edit-couleur').value = couleur;
-            });
-
-            btnSave.addEventListener('click', () => {
-                const newName = editDiv.querySelector('.edit-surnom').value;
-                const newColor = editDiv.querySelector('.edit-couleur').value;
-                // On passe 'pseudo' comme ancien nom pour la recherche historique
-                sauvegarderAmi(ami.uid, newName, newColor, pseudo);
-            });
-
-            const option = document.createElement('option');
-            option.value = ami.uid; 
-            option.text = pseudo; 
-            option.dataset.couleur = couleur;  
-            selectAmiAjout.appendChild(option);
-        });
-    });
+#main-title {
+    font-family: 'Lato', sans-serif;
+    font-weight: 900;
+    color: #FFFFFF;
+    font-size: 2.2em;
+    margin: 0;
+    text-shadow: none;
 }
 
-
-// --- SAUVEGARDE ET HISTORIQUE ---
-
-sauvegarderBtn.addEventListener('click', () => {
-    sauvegarderPartieEnCours();
-});
-
-async function sauvegarderPartieEnCours(isNew = false) {
-    if (!currentUser) return;
-    
-    if (validerTourBouton.disabled && !isNew) return;
-
-    const etatPartie = { 
-        joueurs: joueurs, 
-        mancheActuelle: mancheActuelle, 
-        scoresSecrets: scoresSecrets, 
-        lowScoreWins: lowScoreWins, 
-        conditionsArret: conditionsArret, 
-        dernierSauvegarde: new Date().toISOString() 
-    }; 
-    
-    const userRef = db.collection('utilisateurs').doc(currentUser.uid); 
-    const partiesRef = userRef.collection('parties'); 
-    
-    sauvegarderBtn.disabled = true; 
-    saveFeedback.textContent = "Sauvegarde auto..."; 
-    saveFeedback.classList.remove('cache'); 
-    
-    try { 
-        if (partieIdActuelle) { 
-            await partiesRef.doc(partieIdActuelle).set(etatPartie, { merge: true }); 
-        } else { 
-            const docRef = await partiesRef.add(etatPartie); 
-            partieIdActuelle = docRef.id; 
-        } 
-        saveFeedback.textContent = "Partie sauvegardée !"; 
-        setTimeout(() => saveFeedback.textContent = "", 2000); 
-        chargerListeParties(); 
-    } catch (err) { 
-        console.error("Erreur de sauvegarde: ", err); 
-        saveFeedback.textContent = "Erreur de sauvegarde."; 
-    } finally { 
-        sauvegarderBtn.disabled = false; 
-    }
+/* Menu Latéral (Gauche) */
+#side-nav {
+    grid-column: 1 / 2;
+    grid-row: 1 / 3; 
+    width: 220px;
+    background-color: #D9D7B6; /* Beige */
+    border-right: 1px solid #000;
+    /* Padding retiré ici car géré par #nav-logo */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    z-index: 99;
 }
 
-function chargerListeParties() { if (!currentUser) return; const userRef = db.collection('utilisateurs').doc(currentUser.uid); listePartiesSauvegardees.innerHTML = "Chargement..."; userRef.collection('parties').orderBy('dernierSauvegarde', 'desc').get() .then(querySnapshot => { if (querySnapshot.empty) { listePartiesSauvegardees.innerHTML = "<p>Aucune partie en cours.</p>"; return; } listePartiesSauvegardees.innerHTML = ""; querySnapshot.forEach(doc => { const partie = doc.data(); const nomsJoueurs = partie.joueurs.map(j => j.nom).join(', '); const div = document.createElement('div'); div.innerHTML = ` <div class="partie-historique"> <div class="header-info"> <span><strong>Manche ${partie.mancheActuelle}</strong> (${nomsJoueurs})</span> <div class="action-buttons"> <button class="charger-btn" data-id="${doc.id}" style="background-color: #28a745;">Charger</button> <button class="supprimer-btn" data-id="${doc.id}" style="background-color: #dc3545;">&times;</button> </div> </div> </div> `; listePartiesSauvegardees.appendChild(div); }); }) .catch(err => { console.error("Erreur chargement parties: ", err); listePartiesSauvegardees.innerHTML = "<p>Erreur lors du chargement.</p>"; }); }
-listePartiesSauvegardees.addEventListener('click', e => { const target = e.target; const id = target.dataset.id; if (!id || !currentUser) return; const partieRef = db.collection('utilisateurs').doc(currentUser.uid).collection('parties').doc(id); if (target.classList.contains('charger-btn')) { partieRef.get().then(doc => { if (doc.exists) { const etatPartie = doc.data(); partieIdActuelle = doc.id; joueurs = etatPartie.joueurs; mancheActuelle = etatPartie.mancheActuelle; scoresSecrets = etatPartie.scoresSecrets; lowScoreWins = etatPartie.lowScoreWins; conditionsArret = etatPartie.conditionsArret; showPage('page-score'); validerTourBouton.disabled = false; arreterMaintenantBouton.disabled = false; document.querySelectorAll('.condition-checkbox').forEach(cb => { const type = cb.dataset.type; if (conditionsArret[type]) { cb.checked = conditionsArret[type].active; const input = document.getElementById(inputIdMap[type]); if(input) { input.disabled = !cb.checked; if (type.includes('manche')) { if (type === 'manche_total') input.value = conditionsArret[type].mancheCible; } else { input.value = conditionsArret[type].valeur; } } } }); genererChampsSaisie(); mettreAJourScoresAffichage(); creerGraphique(); if (!scoresSecrets) { let scoreCumules = new Array(joueurs.length).fill(0); if (monGraphique.data.datasets.length !== joueurs.length) { creerGraphique(); } for (let i = 0; i < mancheActuelle; i++) { if(monGraphique.data.labels.length <= i + 1) { monGraphique.data.labels.push(`Manche ${i + 1}`); } joueurs.forEach((joueur, index) => { const scoreDeCeTour = (joueur.scoresTour && joueur.scoresTour[i]) ? joueur.scoresTour[i] : 0; scoreCumules[index] += scoreDeCeTour; if(monGraphique.data.datasets[index]) { monGraphique.data.datasets[index].data[i+1] = scoreCumules[index]; } }); } monGraphique.update(); } mettreAJourCompteurs(); } }); } else if (target.classList.contains('supprimer-btn')) { if (confirm("Voulez-vous vraiment supprimer cette sauvegarde ?")) { partieRef.delete().then(() => { chargerListeParties(); }); } } });
-
-async function sauvegarderHistoriquePartie(classement) { 
-    if (!currentUser) return; 
-    
-    const entreeHistorique = { 
-        date: new Date().toISOString(), 
-        nomJeu: nomJeuActuel, 
-        classement: classement, 
-        joueursComplets: joueurs, 
-        manches: mancheActuelle, 
-        lowScoreWins: lowScoreWins 
-    }; 
-
-    try { 
-        const userRef = db.collection('utilisateurs').doc(currentUser.uid); 
-        await userRef.collection('historique').add(entreeHistorique); 
-        console.log("Historique sauvegardé pour le créateur !"); 
-
-        for (const joueur of joueurs) {
-            if (joueur.uid && joueur.uid !== currentUser.uid) {
-                try {
-                    await db.collection('utilisateurs').doc(joueur.uid).collection('historique').add(entreeHistorique);
-                    console.log(`Historique partagé sauvegardé pour ${joueur.nom} (${joueur.uid})`);
-                } catch (friendErr) {
-                    console.error(`Impossible de sauvegarder pour l'ami ${joueur.nom}:`, friendErr);
-                }
-            }
-        }
-
-        if (!categoriesJeuxConnues.includes(nomJeuActuel)) { 
-            categoriesJeuxConnues.push(nomJeuActuel); 
-            mettreAJourDatalistJeux(); 
-        } 
-        chargerHistoriqueParties(); 
-        if (partieIdActuelle) { 
-            const partieEnCoursRef = userRef.collection('parties').doc(partieIdActuelle); 
-            await partieEnCoursRef.delete(); 
-            partieIdActuelle = null; 
-            console.log("Partie 'en cours' supprimée et transférée à l'historique."); 
-            chargerListeParties(); 
-        } 
-    } catch (err) { 
-        console.error("Erreur sauvegarde historique: ", err); 
-    } 
+#nav-logo {
+    padding: 20px 10px;
+    text-align: center;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    margin-bottom: 10px;
+}
+#nav-logo img, #nav-logo i {
+    max-width: 100%;
+    height: auto;
+    max-width: 150px;
 }
 
-// ... (Le reste du code JS : chargerHistoriqueParties, stats, graphiques, etc. reste inchangé) ...
-async function chargerHistoriqueParties() {
-    if (!currentUser) return;
-    const userRef = db.collection('utilisateurs').doc(currentUser.uid);
-    historyGridJeux.innerHTML = "Chargement...";
-    try {
-        const querySnapshot = await userRef.collection('historique').orderBy('date', 'desc').get();
-        allHistoryData = []; 
-        querySnapshot.forEach(doc => {
-            let data = doc.data();
-            data.id = doc.id;
-            allHistoryData.push(data);
-        });
-        
-        if (allHistoryData.length === 0) {
-            historyGridJeux.innerHTML = "<p>Aucun historique de partie.</p>";
-            return;
-        }
-
-        const partiesParJeu = {};
-        allHistoryData.forEach(partie => {
-            const nomJeu = partie.nomJeu || "Parties";
-            if (!partiesParJeu[nomJeu]) {
-                partiesParJeu[nomJeu] = 0;
-            }
-            partiesParJeu[nomJeu]++;
-        });
-
-        historyGridJeux.innerHTML = "";
-        const nomsJeuxTries = Object.keys(partiesParJeu).sort((a, b) => a.localeCompare(b));
-        
-        nomsJeuxTries.forEach(nomJeu => {
-            const nbParties = partiesParJeu[nomJeu];
-            const div = document.createElement('div');
-            div.className = 'history-game-square';
-            div.dataset.nomJeu = nomJeu;
-            div.innerHTML = `
-                ${nomJeu}
-                <span>${nbParties} partie${nbParties > 1 ? 's' : ''}</span>
-            `;
-            historyGridJeux.appendChild(div);
-        });
-
-        afficherStatsGlobales();
-
-    } catch (err) {
-        console.error("Erreur chargement historique: ", err);
-        historyGridJeux.innerHTML = "<p>Erreur lors du chargement.</p>";
-    }
+#nav-links {
+    display: flex;
+    flex-direction: column;
 }
 
-function afficherStatsGlobales() {
-    if (allHistoryData.length === 0) return;
-
-    // 1. Calcul "Jeux les Plus Joués" (Fréquence)
-    const partiesParJeu = {};
-    allHistoryData.forEach(partie => {
-        const nomJeu = partie.nomJeu || "Parties";
-        partiesParJeu[nomJeu] = (partiesParJeu[nomJeu] || 0) + 1;
-    });
-    const jeuxFrequenceTries = Object.entries(partiesParJeu)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 3); 
-
-    statsJeuxFrequenceListe.innerHTML = "";
-    jeuxFrequenceTries.forEach(([nom, count]) => {
-        const li = document.createElement('li');
-        li.innerHTML = `${nom} <span>(${count} parties)</span>`;
-        statsJeuxFrequenceListe.appendChild(li);
-    });
-
-    // 2. Calcul "Top Joueurs" (Apparitions)
-    const compteJoueurs = {};
-    allHistoryData.forEach(partie => {
-        const joueursDeLaPartie = partie.joueursComplets || partie.classement;
-        joueursDeLaPartie.forEach(joueur => {
-            compteJoueurs[joueur.nom] = (compteJoueurs[joueur.nom] || 0) + 1;
-        });
-    });
-    const joueursTries = Object.entries(compteJoueurs)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 3);
-
-    statsJoueursPodiumListe.innerHTML = "";
-    joueursTries.forEach(([nom, count]) => {
-        const li = document.createElement('li');
-        li.innerHTML = `${nom} <span>(${count} apparitions)</span>`;
-        statsJoueursPodiumListe.appendChild(li);
-    });
-
-    // 3. Calcul "Top Jeux" (Performance / % Position Moyen)
-    const statsPerfJeu = {}; 
-
-    allHistoryData.forEach(partie => {
-        const nomJeu = partie.nomJeu || "Parties";
-        const totalJoueurs = partie.classement.length;
-        if (totalJoueurs <= 1) return;
-
-        if (!statsPerfJeu[nomJeu]) {
-            statsPerfJeu[nomJeu] = { totalPctSum: 0, gameCount: 0 };
-        }
-
-        partie.classement.forEach(joueur => {
-            const rang = joueur.rang;
-            const positionPct = (totalJoueurs - rang) / (totalJoueurs - 1);
-            statsPerfJeu[nomJeu].totalPctSum += positionPct;
-        });
-        statsPerfJeu[nomJeu].gameCount += totalJoueurs;
-    });
-
-    const jeuxPerfTries = Object.entries(statsPerfJeu)
-        .map(([nom, data]) => ({
-            nom: nom,
-            avg: (data.totalPctSum / data.gameCount) * 100
-        }))
-        .filter(jeu => !isNaN(jeu.avg))
-        .sort((a, b) => b.avg - a.avg)
-        .slice(0, 3);
-
-    statsTopJeuxListe.innerHTML = "";
-    jeuxPerfTries.forEach(jeu => {
-        const li = document.createElement('li');
-        li.innerHTML = `${jeu.nom} <span>(${jeu.avg.toFixed(1)}% perf.)</span>`;
-        statsTopJeuxListe.appendChild(li);
-    });
+.nav-link {
+    color: #34495e;
+    text-decoration: none;
+    padding: 15px 20px;
+    font-size: 1.1em;
+    font-weight: 700;
+    transition: background-color 0.2s, color 0.2s;
+    border-left: 4px solid transparent;
+}
+.nav-link:hover {
+    background-color: #f0f0f0;
+    color: #2c3e50;
+}
+.nav-link.active {
+    background-color: #f0f0f0;
+    color: #007bff; /* Bleu actif */
+    font-weight: 700;
+    border-left: 4px solid #007bff;
 }
 
-
-function afficherDetailsHistoriqueJeu(nomJeu) {
-    historyDetailsTitle.textContent = `Historique pour : ${nomJeu}`;
-    listeHistoriquePartiesDetails.innerHTML = '';
-    joueursSurGraphique = [];
-    mettreAJourTagsGraphique(); 
-
-    const partiesDeCeJeu = allHistoryData
-        .filter(partie => (partie.nomJeu || "Parties") === nomJeu)
-        .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    const joueursUniques = new Set();
-    const comptePartiesJoueur = {};
-    partiesDeCeJeu.forEach(partie => {
-        partie.classement.forEach(joueur => {
-            joueursUniques.add(joueur.nom);
-            comptePartiesJoueur[joueur.nom] = (comptePartiesJoueur[joueur.nom] || 0) + 1;
-        });
-    });
-
-    historyPlayerSelect.innerHTML = '';
-    joueursUniques.forEach(nom => {
-        const option = document.createElement('option');
-        option.value = nom;
-        option.textContent = `${nom} (${comptePartiesJoueur[nom]} p.)`;
-        historyPlayerSelect.appendChild(option);
-    });
-
-    const joueurParDefaut = Object.entries(comptePartiesJoueur)
-        .sort(([, a], [, b]) => b - a)[0];
-
-    if (joueurParDefaut) {
-        const nomJoueurDefaut = joueurParDefaut[0];
-        historyPlayerSelect.value = nomJoueurDefaut;
-        joueursSurGraphique.push(nomJoueurDefaut);
-        mettreAJourTagsGraphique();
-        redessinerGraphiquePosition(partiesDeCeJeu);
-    } else {
-        if (monGraphiquePosition) {
-            monGraphiquePosition.destroy();
-            monGraphiquePosition = null;
-        }
-    }
-
-    partiesDeCeJeu.forEach(partie => {
-        const datePartie = new Date(partie.date);
-        const dateStr = datePartie.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        const timeStr = datePartie.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        const dateTimeStr = `${dateStr} à ${timeStr}`;
-
-        const podium1 = partie.classement.filter(j => j.rang === 1).map(j => `<span><span class="podium-medaille-small">🥇</span> ${j.nom} (${j.scoreTotal} pts)</span>`).join(' ');
-        const podium2 = partie.classement.filter(j => j.rang === 2).map(j => `<span><span class="podium-medaille-small">🥈</span> ${j.nom} (${j.scoreTotal} pts)</span>`).join(' ');
-        const podium3 = partie.classement.filter(j => j.rang === 3).map(j => `<span><span class="podium-medaille-small">🥉</span> ${j.nom} (${j.scoreTotal} pts)</span>`).join(' ');
-
-        const div = document.createElement('div');
-        div.className = 'partie-historique';
-        div.innerHTML = `
-            <div class="header-info">
-                <span class="time-date">${dateTimeStr}</span>
-                <div class="action-buttons">
-                    <button class="voir-hist-btn" data-id="${partie.id}" title="Voir le podium">Voir</button>
-                    <button class="supprimer-hist-btn" data-id="${partie.id}" title="Supprimer de l'historique">&times;</button>
-                </div>
-            </div>
-            <div class="podium-mini">
-                ${podium1} ${podium2} ${podium3}
-            </div>
-        `;
-        listeHistoriquePartiesDetails.appendChild(div);
-    });
-    
-    showPage('page-history-details');
+#user-info-nav {
+    padding: 20px;
+    border-top: 1px solid #eee;
+    font-size: 0.9em;
+    color: #34495e;
+}
+#user-info-nav p {
+    margin-top: 0;
+    word-break: break-word;
+}
+#user-info-nav button {
+    width: 100%;
+    background-color: #dc3545;
 }
 
-function mettreAJourTagsGraphique() {
-    if (!graphPlayersList) return;
-    graphPlayersList.innerHTML = ''; 
-
-    joueursSurGraphique.forEach(nom => {
-        const tag = document.createElement('span');
-        tag.className = 'graph-player-tag';
-        
-        const nomSpan = document.createElement('span');
-        nomSpan.textContent = nom;
-        
-        const retirerBtn = document.createElement('button');
-        retirerBtn.className = 'bouton-retirer';
-        retirerBtn.innerHTML = '&times;';
-        retirerBtn.dataset.nom = nom;
-        retirerBtn.title = `Retirer ${nom} du graphique`;
-
-        retirerBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const nomARetirer = retirerBtn.dataset.nom;
-            joueursSurGraphique = joueursSurGraphique.filter(j => j !== nomARetirer);
-            
-            mettreAJourTagsGraphique();
-            
-            const nomJeu = historyDetailsTitle.textContent.replace('Historique pour : ', '');
-            const partiesDeCeJeu = allHistoryData
-                .filter(partie => (partie.nomJeu || "Parties") === nomJeu);
-            redessinerGraphiquePosition(partiesDeCeJeu);
-        });
-
-        tag.appendChild(nomSpan);
-        tag.appendChild(retirerBtn);
-        graphPlayersList.appendChild(tag);
-    });
+/* Contenu Principal */
+#main-content {
+    grid-column: 2 / 3;
+    grid-row: 2 / 3;
+    padding: 20px;
+    overflow-y: auto;
+    background-color: #FFFFFF;
 }
 
-
-function redessinerGraphiquePosition(parties) {
-    if (monGraphiquePosition) {
-        monGraphiquePosition.destroy();
-    }
-
-    if (joueursSurGraphique.length === 0) {
-        return;
-    }
-
-    const partiesFiltrees = parties
-        .filter(partie => partie.classement.some(j => joueursSurGraphique.includes(j.nom)))
-        .sort((a, b) => new Date(a.date) - new Date(b.date)); 
-
-    if (partiesFiltrees.length === 0) return;
-
-    const labels = partiesFiltrees.map((partie, index) => `Partie ${index + 1}`);
-
-    const datasets = joueursSurGraphique.map((nomJoueur, index) => {
-        const dataPoints = [];
-        
-        partiesFiltrees.forEach(partie => {
-            const joueur = partie.classement.find(j => j.nom === nomJoueur);
-            
-            if (joueur) {
-                const rang = joueur.rang;
-                const totalJoueurs = partie.classement.length;
-                let positionPct = 0;
-
-                if (totalJoueurs > 1) {
-                    positionPct = ((totalJoueurs - rang) / (totalJoueurs - 1)) * 100;
-                } else if (totalJoueurs === 1) {
-                    positionPct = 100;
-                }
-                dataPoints.push(positionPct);
-            } else {
-                dataPoints.push(null);
-            }
-        });
-
-        const couleur = COULEURS_GRAPH[index % COULEURS_GRAPH.length];
-        return {
-            label: `Position de ${nomJoueur} (en %)`,
-            data: dataPoints,
-            borderColor: couleur,
-            backgroundColor: couleur + '33',
-            fill: false,
-            tension: 0.1,
-            spanGaps: true, 
-        };
-    });
-
-    monGraphiquePosition = new Chart(canvasGraphiquePosition, {
-        type: 'line',
-        data: { labels: labels, datasets: datasets },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { position: 'top' },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}%`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    title: { display: true, text: 'Pourcentage de Position' },
-                    min: 0,
-                    max: 100,
-                    ticks: { callback: value => value + '%' }
-                },
-                x: {
-                    title: { display: true, text: 'Parties (chronologique)' }
-                }
-            }
-        }
-    });
+.page-content {
+    max-width: 900px;
+    margin: 0 auto;
 }
 
+h2 {
+    color: #2c3e50;
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 5px;
+    margin-top: 20px;
+    font-weight: 700;
+}
+h3 {
+    margin-top: 0;
+    color: #34495e;
+}
 
-historyGridJeux.addEventListener('click', (e) => {
-    const square = e.target.closest('.history-game-square');
-    if (square && square.dataset.nomJeu) {
-        afficherDetailsHistoriqueJeu(square.dataset.nomJeu);
-    }
-});
+/* --- 4. COMPOSANTS (FORMULAIRES, BOUTONS, INPUTS) --- */
+.input-group, .input-tour, .graphique-container { 
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    background-color: #FFFFFF;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
 
-historyBackBtn.addEventListener('click', () => {
-    showPage('page-history-grid');
-    joueursSurGraphique = [];
-    mettreAJourTagsGraphique();
-    if (monGraphiquePosition) {
-        monGraphiquePosition.destroy();
-        monGraphiquePosition = null;
-    }
-});
+.input-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
 
-listeHistoriquePartiesDetails.addEventListener('click', async (e) => {
-    const target = e.target;
-    const id = target.dataset.id;
-    if (!id || !currentUser) return;
-    
-    if (target.classList.contains('supprimer-hist-btn')) {
-        const histRef = db.collection('utilisateurs').doc(currentUser.uid).collection('historique').doc(id);
-        if (confirm("Voulez-vous vraiment supprimer cette partie de l'historique ?")) {
-            try {
-                await histRef.delete();
-                await chargerHistoriqueParties(); 
-                const nomJeu = historyDetailsTitle.textContent.replace('Historique pour : ', '');
-                afficherDetailsHistoriqueJeu(nomJeu);
-            } catch (err) {
-                console.error("Erreur de suppression: ", err);
-                alert("Une erreur est survenue.");
-            }
-        }
-    }
-    
-    if (target.classList.contains('voir-hist-btn')) {
-        try {
-            const partieData = allHistoryData.find(p => p.id === id); 
-            if (partieData) {
-                classementFinal = partieData.classement;
-                joueurs = partieData.joueursComplets;
-                lowScoreWins = partieData.lowScoreWins;
-                mancheActuelle = partieData.manches;
-                showPage('page-podium');
-                construirePodiumFinal();
-                recreerGraphiqueFinal();
-            } else {
-                alert("Impossible de trouver cette partie.");
-            }
-        } catch (err) {
-            console.error("Erreur pour voir l'historique: ", err);
-            alert("Erreur lors du chargement de la partie.");
-        }
-    }
-});
+.label-couleur {
+    margin-left: 5px;
+    font-size: 0.9em;
+}
 
-addPlayerToGraphBtn.addEventListener('click', () => {
-    const nomJoueur = historyPlayerSelect.value;
-    if (!nomJoueur) return;
+input[type="color"] {
+    width: 40px;
+    height: 40px;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    background-color: transparent;
+    border-radius: 5px;
+}
 
-    if (!joueursSurGraphique.includes(nomJoueur)) {
-        joueursSurGraphique.push(nomJoueur);
-        
-        mettreAJourTagsGraphique();
-        
-        const nomJeu = historyDetailsTitle.textContent.replace('Historique pour : ', '');
-        const partiesDeCeJeu = allHistoryData
-            .filter(partie => (partie.nomJeu || "Parties") === nomJeu);
-            
-        redessinerGraphiquePosition(partiesDeCeJeu);
-    }
-});
+.fin-partie-options input[type="number"] {
+    width: 60px;
+    padding: 5px;
+}
 
+input[type="text"], input[type="number"], input[type="email"], input[type="password"], select { 
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 150px;
+}
+/* Pour que le select prenne la place dispo */
+select {
+    width: auto;
+    flex-grow: 1;
+}
 
-// --- 6. Fonctions pour les SUGGESTIONS ---
-function mettreAJourDatalistJeux() { datalistJeux.innerHTML = ''; categoriesJeuxConnues.forEach(nomJeu => { const option = document.createElement('option'); option.value = nomJeu; datalistJeux.appendChild(option); }); }
-async function chargerCategoriesConnues() { if (!currentUser) return; const userRef = db.collection('utilisateurs').doc(currentUser.uid); try { const querySnapshot = await userRef.collection('historique').get(); const nomsJeux = new Set(); querySnapshot.forEach(doc => { const nomJeu = doc.data().nomJeu; if (nomJeu) { nomsJeux.add(nomJeu); } }); categoriesJeuxConnues = [...nomsJeux].sort(); mettreAJourDatalistJeux(); } catch (err) { console.error("Erreur chargement catégories: ", err); } }
-function afficherSuggestionsJoueurs() { listeSuggestionsJoueurs.innerHTML = ''; if (joueursRecents.length === 0) { suggestionsJoueursDiv.classList.add('cache'); return; } suggestionsJoueursDiv.classList.remove('cache'); joueursRecents.sort((a,b) => a.nom.localeCompare(b.nom)).forEach(joueur => { const tag = document.createElement('div'); tag.className = 'joueur-suggestion-tag'; tag.dataset.nom = joueur.nom; tag.dataset.couleur = joueur.couleur; tag.innerHTML = ` <span class="joueur-couleur-swatch" style="background-color: ${joueur.couleur};"></span> <span>${joueur.nom}</span> `; listeSuggestionsJoueurs.appendChild(tag); }); }
-async function chargerJoueursRecents() { if (!currentUser) return; const userRef = db.collection('utilisateurs').doc(currentUser.uid); try { const querySnapshot = await userRef.collection('joueursRecents').get(); joueursRecents = []; querySnapshot.forEach(doc => { joueursRecents.push(doc.data()); }); afficherSuggestionsJoueurs(); } catch (err) { console.error("Erreur chargement joueurs récents: ", err); } }
-listeSuggestionsJoueurs.addEventListener('click', (e) => { const tag = e.target.closest('.joueur-suggestion-tag'); if (tag) { const nom = tag.dataset.nom; const couleur = tag.dataset.couleur; nomJoueurInput.value = nom; couleurJoueurInput.value = couleur; } });
+button {
+    padding: 10px 15px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    margin-top: 5px;
+    font-weight: 700;
+}
+button:hover:not(:disabled) {
+    background-color: #0056b3;
+}
+button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
 
-// --- 7. Écouteurs de navigation principaux ---
-navLinks.forEach(link => {
-    link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const pageId = link.dataset.page;
-        showPage(pageId);
-    });
-});
+.bouton-fin {
+    background-color: #dc3545;
+    margin-top: 15px;
+    width: 100%;
+}
+.bouton-fin:hover {
+    background-color: #c82333;
+}
+
+.bouton-simple {
+    background: none;
+    border: 1px solid #ccc;
+    color: #333;
+    background-color: #eee;
+}
+.bouton-simple:hover {
+    background-color: #ddd;
+}
+
+/* NOUVEAU : Style spécifique pour le bouton annuler rouge */
+#annuler-tour:hover {
+    background-color: #dc3545;
+    color: white !important;
+    border-color: #dc3545;
+}
+
+/* --- 5. LISTE DES JOUEURS (CONFIGURATION) --- */
+#liste-joueurs-conf {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+.joueur-tag {
+    display: inline-flex;
+    align-items: center;
+    background-color: #e9ecef;
+    color: #333;
+    padding: 7px 12px;
+    margin: 0;
+    border-radius: 20px;
+    font-weight: bold;
+}
+.joueur-couleur-swatch {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    margin-right: 8px;
+    border: 1px solid #fff;
+    box-shadow: 0 0 2px rgba(0,0,0,0.5);
+}
+.bouton-retirer {
+    background: none;
+    border: none;
+    color: #dc3545;
+    font-size: 1.3em;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 0 0 0 10px;
+    margin: 0;
+    line-height: 1;
+}
+.bouton-retirer:hover {
+    color: #c82333;
+}
+
+/* --- 6. PARAMÈTRES ET OPTIONS --- */
+.option-secret, .option-victoire, .fin-partie-options {
+    margin: 10px 0;
+    padding: 0;
+    border: none;
+    background: none;
+    width: 100%;
+}
+.fin-partie-options label { 
+    display: block; 
+    margin-bottom: 10px; 
+    font-weight: normal;
+    cursor: pointer;
+}
+.fin-partie-options label input[type="number"] { display: inline; }
+
+.divider {
+    border: 0;
+    height: 1px;
+    background-color: #000;
+    margin: 0 0 20px 0;
+    width: 100%;
+}
+
+.settings-options-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+}
+.setting-item {
+    display: flex;
+    flex-direction: column; 
+}
+.setting-item.inline {
+    flex-direction: row;
+    align-items: center;
+}
+.setting-item label {
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+.setting-item.inline label {
+    font-weight: 500;
+    cursor: pointer;
+}
+.setting-item input[type="checkbox"],
+.setting-item input[type="radio"] {
+    margin-right: 10px;
+    cursor: pointer;
+}
+.setting-title {
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+.radio-option {
+    margin-left: 25px;
+    margin-bottom: 8px;
+}
+.radio-option:last-child {
+    margin-bottom: 0;
+}
+
+/* --- 7. TABLEAU DES SCORES --- */
+.classement-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+.classement-table th, .classement-table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+.classement-table th {
+    background-color: #f0f0f0;
+}
+.score-total {
+    font-weight: bold;
+    color: #007bff;
+    font-size: 1.1em;
+}
+
+/* --- 8. ÉCRAN DE RÉVÉLATION & ANIMATIONS --- */
+#reveal-ecran {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.75);
+    z-index: 150;
+    display: flex; justify-content: center; align-items: center;
+    overflow: hidden; cursor: pointer;
+}
+#reveal-content {
+    background-color: white; color: #333;
+    padding: 30px 50px; border-radius: 40px;
+    text-align: center; min-width: 400px; max-width: 80%;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    transform: translateZ(0); cursor: default;
+}
+#reveal-rang { font-size: 2em; color: #555; margin: 0; }
+.reveal-nom-container { position: relative; min-height: 80px; display: flex; align-items: center; justify-content: center; }
+#reveal-nom, #reveal-nom-placeholder {
+    font-size: 3.5em; font-weight: bold; margin: 10px 0;
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    transition: opacity 0.3s ease-in-out;
+}
+#reveal-nom { opacity: 0; }
+#reveal-nom-placeholder { opacity: 1; }
+#reveal-content.is-revealed #reveal-nom { opacity: 1; }
+#reveal-content.is-revealed #reveal-nom-placeholder { opacity: 0; }
+#reveal-score { font-size: 1.8em; color: #444; margin: 0; }
+#skip-all-btn { position: fixed; bottom: 30px; right: 30px; z-index: 152; width: auto; margin: 0; }
+
+.slide-in-from-left { animation: slideInFromLeft 0.5s cubic-bezier(0.250, 0.460, 0.450, 0.940) both; }
+.shake-reveal { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+.slide-out-to-right { animation: slideOutToRight 0.5s cubic-bezier(0.550, 0.085, 0.680, 0.530) both; }
+
+@keyframes slideInFromLeft { 0% { transform: translateX(-150%); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
+@keyframes slideOutToRight { 0% { transform: translateX(0); opacity: 1; } 100% { transform: translateX(150%); opacity: 0; } }
+@keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
+
+/* --- 9. PODIUM VISUEL --- */
+#podium-ecran { text-align: center; }
+#podium-visuel {
+    display: flex; align-items: flex-end; justify-content: center;
+    gap: 5px; height: 300px; margin: 20px 0;
+}
+.podium-place {
+    flex: 1; max-width: 200px; padding: 20px;
+    border-radius: 8px 8px 0 0; color: #333;
+    display: flex; flex-direction: column; justify-content: flex-end;
+}
+.podium-medaille { font-size: 3em; }
+.podium-nom { font-size: 1.5em; font-weight: bold; margin: 10px 0; word-wrap: break-word; }
+.podium-score { font-size: 1.1em; }
+#podium-1 { height: 250px; background-color: gold; order: 2; }
+#podium-2 { height: 180px; background-color: silver; order: 1; }
+#podium-3 { height: 130px; background-color: #cd7f32; order: 3; }
+
+#autres-joueurs { text-align: left; max-width: 400px; margin: 20px auto; }
+#autres-joueurs-liste { list-style-type: none; padding: 0; }
+#autres-joueurs-liste li { font-size: 1.1em; padding: 8px; border-bottom: 1px solid #eee; }
+#graphique-final-container { margin-top: 20px; }
+
+/* --- 10. STYLES SPÉCIFIQUES AJOUTÉS (Amis, Stats, Graphiques) --- */
+
+.erreur-msg { color: #dc3545; width: 100%; text-align: center; margin-top: 10px; }
+
+#liste-parties-sauvegardees button { margin: 5px; padding: 5px 10px; font-size: 0.9em; }
+#liste-parties-sauvegardees button.supprimer-btn { background-color: #dc3545; }
+
+/* Grille d'historique */
+#history-grid-jeux { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; margin-top: 20px; }
+.history-game-square { background-color: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; text-align: center; font-size: 1.2em; font-weight: bold; color: #2c3e50; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.history-game-square:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.1); transform: translateY(-2px); border-color: #007bff; }
+.history-game-square span { font-size: 0.8em; font-weight: normal; color: #555; display: block; margin-top: 5px; }
+
+/* Liste d'historique DÉTAILS */
+.partie-historique {
+    background-color: #FFFFFF;
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    font-size: 0.9em;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.partie-historique .header-info { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 5px; }
+.partie-historique .time-date { font-size: 0.9em; font-weight: 700; color: #555; white-space: nowrap; }
+.partie-historique .podium-mini { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 5px; font-size: 1.1em; }
+.partie-historique .podium-mini span { font-weight: 700; display: flex; align-items: center; color: #34495e; }
+.partie-historique .podium-mini span .podium-medaille-small { font-size: 1.3em; margin-right: 5px; }
+.partie-historique .action-buttons { display: flex; gap: 5px; }
+.partie-historique button { padding: 5px 10px; font-size: 0.9em; flex-shrink: 0; margin: 0; }
+.partie-historique button.supprimer-hist-btn { background-color: #dc3545; }
+.partie-historique button.voir-hist-btn { background-color: #17a2b8; }
+
+/* Suggestions de joueurs */
+#liste-suggestions-joueurs { display: flex; flex-wrap: wrap; gap: 8px; }
+.joueur-suggestion-tag { display: inline-flex; align-items: center; background-color: #e9ecef; color: #333; padding: 7px 12px; border-radius: 20px; font-weight: 700; cursor: pointer; transition: background-color 0.2s; }
+.joueur-suggestion-tag:hover { background-color: #d1d5da; }
+
+/* --- Styles pour Amis --- */
+.add-friend-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+}
+.add-friend-form input[type="email"] { flex: 2; min-width: 150px; }
+.friend-details-inputs {
+    display: flex; gap: 10px; flex: 2; min-width: 150px;
+}
+.friend-details-inputs input[type="text"] { flex: 1; }
+.friend-details-inputs input[type="color"] { width: 40px; }
+
+.friend-item { 
+    display: flex; flex-direction: column; 
+    padding: 10px; border-bottom: 1px solid #eee; 
+}
+.friend-view { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+.friend-info { display: flex; align-items: center; gap: 10px; font-weight: bold; }
+.friend-email { font-weight: normal; color: #666; font-size: 0.9em; }
+.friend-actions { display: flex; gap: 5px; }
+
+/* Formulaire édition ami */
+.friend-edit-form {
+    display: none;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #eee;
+    gap: 5px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.friend-edit-form.active { display: flex; }
+.friend-edit-form input[type="text"] { width: 120px; padding: 5px; }
+
+.friend-color-swatch { width: 15px; height: 15px; border-radius: 50%; border: 1px solid #ccc; display: inline-block; }
+
+.btn-icon { background: none; border: none; cursor: pointer; font-size: 1.1em; padding: 5px; }
+.btn-edit-friend { color: #007bff; }
+.btn-delete-friend { color: #dc3545; }
+.btn-save-friend { background-color: #28a745; padding: 5px 10px; font-size: 0.8em; margin-top: 0; color: white; border-radius: 4px; border:none; }
+.btn-cancel-friend { background-color: #6c757d; padding: 5px 10px; font-size: 0.8em; margin-top: 0; color: white; border-radius: 4px; border:none; }
+
+/* Ajout Joueur / Ami */
+.add-player-group { display: flex; flex-direction: column; gap: 10px; }
+.player-input-row { display: flex; align-items: center; gap: 10px; width: 100%; }
+.player-input-row input { flex: 1; }
+.player-input-row select { flex: 1; }
+.player-color-row { display: flex; align-items: center; gap: 10px; width: 100%; }
+
+/* Stats */
+.stats-container { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 20px; }
+.stats-container .input-group { flex: 1; min-width: 240px; margin-bottom: 0; display: flex; flex-direction: column; }
+.stats-container h3 { width: 100%; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+.stats-container ol { width: 100%; padding-left: 20px; margin: 0; }
+.stats-container li { font-weight: 700; font-size: 1.1em; margin-bottom: 5px; }
+.stats-container li span { font-weight: 400; font-size: 0.9em; color: #555; margin-left: 5px; }
+
+/* Graphique */
+.graphique-container-details { width: 100%; margin-top: 15px; }
+#history-details-chart-controls { align-items: flex-start; }
+#history-details-chart-controls h3 { width: 100%; margin-bottom: 10px; }
+#graph-players-list { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; margin-bottom: 10px; min-height: 20px; }
+.graph-player-tag { display: inline-flex; align-items: center; background-color: #e9ecef; color: #333; padding: 5px 10px; border-radius: 15px; font-weight: 700; font-size: 0.9em; }
+.graph-player-tag .bouton-retirer { font-size: 1.1em; padding-left: 8px; color: #888; }
+.graph-player-tag .bouton-retirer:hover { color: #dc3545; }
+.add-graph-player-controls { display: flex; width: 100%; gap: 10px; align-items: center; }
+.add-graph-player-controls select { flex-grow: 1; }
+.add-graph-player-controls button { flex-grow: 0; width: 40px; margin-top: 0; padding: 10px 0; font-size: 1.2em; }
