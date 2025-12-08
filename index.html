@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
@@ -31,12 +32,13 @@
 
         <nav id="side-nav">
             <div id="nav-logo">
-                <img src="FoxScore" alt="Logo FoxScore" style="width: 100%; height: auto;">
+                <img src="FoxScore.png" alt="FoxScore" style="width: 100%; height: auto; max-width: 150px;">
             </div>
             <div id="nav-links">
-                <a href="#" class="nav-link" data-page="page-history-grid">Historique</a>
-                <a href="#" class="nav-link" data-page="page-new-game">Nouvelle Partie</a>
+                <a href="#" class="nav-link active" data-page="page-new-game">Nouvelle Partie</a>
                 <a href="#" class="nav-link" data-page="page-ongoing-games">Parties en Cours</a>
+                <a href="#" class="nav-link" data-page="page-history-grid">Historique</a>
+                <a href="#" class="nav-link" data-page="page-friends">Mes Amis</a>
             </div>
             <div id="user-info-nav">
                 <p>Connecté : <strong id="user-email-nav"></strong></p>
@@ -49,15 +51,25 @@
             <div id="page-new-game" class="page-content cache">
                 <h2>🎲 Nouvelle Partie</h2>
                 <div class="input-group">
-                    <input type="text" id="nom-jeu-config" placeholder="Nom du jeu (ex: Skyjo, 6 qui prend!)" style="width: 300px;" list="datalist-jeux">
+                    <input type="text" id="nom-jeu-config" placeholder="Nom du jeu (ex: Skyjo...)" style="width: 300px;" list="datalist-jeux">
                     <datalist id="datalist-jeux"></datalist>
                 </div>
-                <div class="input-group">
-                    <input type="text" id="nom-joueur" placeholder="Nom du joueur">
-                    <label for="couleur-joueur" class="label-couleur">Couleur :</label>
-                    <input type="color" id="couleur-joueur" value="#FF6384">
-                    <button id="ajouter-joueur">Ajouter</button>
+                
+                <div class="input-group add-player-group">
+                    <div class="player-input-row">
+                        <input type="text" id="nom-joueur" placeholder="Nom du joueur">
+                        <span style="font-size: 0.9em; color: #777;">ou</span>
+                        <select id="select-ami-ajout">
+                            <option value="">-- Choisir un ami --</option>
+                        </select>
+                    </div>
+                    <div class="player-color-row">
+                        <label for="couleur-joueur" class="label-couleur">Couleur :</label>
+                        <input type="color" id="couleur-joueur" value="#FF6384">
+                        <button id="ajouter-joueur">Ajouter le joueur</button>
+                    </div>
                 </div>
+
                 <div id="suggestions-joueurs" class="input-group cache">
                     <h3>Joueurs récents :</h3>
                     <div id="liste-suggestions-joueurs" style="width: 100%;"></div>
@@ -65,17 +77,13 @@
                 <div id="liste-joueurs-conf" class="input-group"></div>
 
                 <div class="input-group">
-                    
                     <h3 style="width: 100%; margin-bottom: 10px; color: #000;">Paramètres de partie</h3>
                     <hr class="divider">
-
                     <div class="settings-options-wrapper">
-                        
                         <div class="setting-item inline">
                             <input type="checkbox" id="mode-secret-config">
                             <label for="mode-secret-config">Garder les scores secrets jusqu'à la fin</label>
                         </div>
-                        
                         <div class="setting-item">
                             <label class="setting-title">Objectif du jeu :</label>
                             <div class="radio-option">
@@ -88,10 +96,33 @@
                             </div>
                         </div>
                     </div> 
-
                     <button id="demarrer-partie" disabled>Démarrer la partie</button>
                 </div>
+            </div>
 
+            <div id="page-friends" class="page-content cache">
+                <h2>Mes Amis</h2>
+                <div class="input-group">
+                    <h3>Ajouter un ami</h3>
+                    <p style="width:100%; font-size: 0.9em; color: #666; margin-bottom: 10px;">Recherchez par email, puis choisissez un surnom et une couleur.</p>
+                    
+                    <div class="add-friend-form">
+                        <input type="email" id="friend-email-input" placeholder="Email de l'ami (ex: ami@test.com)">
+                        <div class="friend-details-inputs">
+                            <input type="text" id="friend-nickname-input" placeholder="Surnom (Optionnel)">
+                            <input type="color" id="friend-color-input" value="#36A2EB" title="Choisir une couleur">
+                        </div>
+                        <button id="btn-add-friend">Ajouter</button>
+                    </div>
+                    <p id="friend-add-msg" class="cache"></p>
+                </div>
+
+                <div class="input-group">
+                    <h3>Liste d'amis</h3>
+                    <div id="friends-list-container" style="width: 100%;">
+                        <p>Chargement...</p>
+                    </div>
+                </div>
             </div>
 
             <div id="page-ongoing-games" class="page-content cache">
@@ -116,8 +147,7 @@
                     </div>
                 </div>
                 <p>Cliquez sur un jeu pour voir toutes les parties jouées.</p>
-                <div id="history-grid-jeux">
-                    </div>
+                <div id="history-grid-jeux"></div>
             </div>
             
             <div id="page-history-details" class="page-content cache">
@@ -126,23 +156,18 @@
                 
                 <div id="history-details-chart-controls" class="input-group">
                     <h3>Analyse de position</h3>
-                    
-                    <div id="graph-players-list">
-                    </div>
-                    
+                    <div id="graph-players-list"></div>
                     <div class="add-graph-player-controls">
                         <select id="history-player-select"></select>
                         <button id="add-player-to-graph-btn" class="bouton-simple">+</button>
                     </div>
-
                     <div class="graphique-container-details">
                         <canvas id="graphique-position-details"></canvas>
                     </div>
                 </div>
 
                 <h3>Toutes les parties</h3>
-                <div id="liste-historique-parties-details">
-                    </div>
+                <div id="liste-historique-parties-details"></div>
             </div>
 
             <div id="page-score" class="page-content cache">
@@ -163,18 +188,23 @@
                             <h3>Nouveau Tour</h3>
                             <div id="saisie-points"></div>
                             <button id="valider-tour">Valider le Tour</button>
+                            <button id="annuler-tour" class="bouton-simple" style="margin-top: 10px; border-color: #dc3545; color: #dc3545; width: 100%;">↩️ Corriger le dernier tour</button>
                         </div>
                     </div>
                     <div class="score-droite">
                         <h3>Conditions d'Arrêt :</h3>
-                        <div class="fin-partie-options">
+                        <div class="fin-partie-options input-group">
                             <label><input type="checkbox" class="condition-checkbox" id="check-score-limite" data-type="score_limite"> Arrêter quand un joueur atteint <input type="number" id="score-limite" min="1" value="100" disabled> points (Total).</label><br>
                             <label><input type="checkbox" class="condition-checkbox" id="check-score-relatif" data-type="score_relatif"> Arrêter quand un joueur a marqué <input type="number" id="score-relatif" min="1" value="50" disabled> points de plus que maintenant.</label><br>
                             <label><input type="checkbox" class="condition-checkbox" id="check-manche-total" data-type="manche_total"> Arrêter après un total de <input type="number" id="nb-manches-total" min="1" value="10" disabled> manches.</label><br>
                             <label><input type="checkbox" class="condition-checkbox" id="check-manche-restante" data-type="manche_restante"> Arrêter dans <input type="number" id="nb-manches-restantes" min="1" value="3" disabled> manches restantes.</label>
                         </div>
-                        <button id="sauvegarder-partie" style="background-color: #28a745; width: 100%;">Sauvegarder la partie</button>
-                        <p id="save-feedback" class="cache" style="color: green; text-align: center;"></p>
+                        
+                        <div style="margin-top: 15px;">
+                            <button id="sauvegarder-partie" style="background-color: #28a745; width: 100%;">Sauvegarder Manuellement</button>
+                            <p id="save-feedback" style="color: green; text-align: center; height: 20px; font-size: 0.9em; margin: 0;"></p>
+                        </div>
+
                         <button id="arreter-maintenant" class="bouton-fin">Terminer la partie Maintenant</button>
                     </div>
                 </div>
