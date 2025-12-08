@@ -783,12 +783,14 @@ function afficherStatsGlobales() {
             statsPerfJeu[nomJeu] = { totalPctSum: 0, gameCount: 0 };
         }
 
-        partie.classement.forEach(joueur => {
-            const rang = joueur.rang;
+        // Calcul corrigé pour le joueur connecté
+        const joueurConnecte = partie.classement.find(j => j.uid === currentUser.uid);
+        if (joueurConnecte) {
+            const rang = joueurConnecte.rang;
             const positionPct = (totalJoueurs - rang) / (totalJoueurs - 1);
             statsPerfJeu[nomJeu].totalPctSum += positionPct;
-        });
-        statsPerfJeu[nomJeu].gameCount += totalJoueurs;
+            statsPerfJeu[nomJeu].gameCount += 1;
+        }
     });
 
     const jeuxPerfTries = Object.entries(statsPerfJeu)
