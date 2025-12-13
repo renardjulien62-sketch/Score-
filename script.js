@@ -1,4 +1,6 @@
-// --- VARIABLES GLOBALES ---
+// =============================================================
+// 1. VARIABLES GLOBALES
+// =============================================================
 let joueurs = [];
 let scoresSecrets = false;
 let mancheActuelle = 0;
@@ -10,6 +12,9 @@ let categoriesJeuxConnues = [];
 let joueursRecents = []; 
 let allHistoryData = []; 
 let mesAmis = []; 
+
+// Profil local
+let monProfilLocal = { nom: '', couleur: '#e67e22', uid: null };
 
 let monGraphiquePosition = null;
 let joueursSurGraphique = [];
@@ -32,55 +37,88 @@ const inputIdMap = {
     'manche_restante': 'nb-manches-restantes'
 };
 
-// --- SÉLECTION DES ÉLÉMENTS HTML ---
+// Init Firebase
+const auth = firebase.auth(); 
+let partieIdActuelle = null; 
+let currentUser = null;
+
+// =============================================================
+// 2. SÉLECTION DES ÉLÉMENTS HTML (DOM)
+// =============================================================
+// Auth
 const authEcran = document.getElementById('auth-ecran');
+const authErreur = document.getElementById('auth-erreur');
+const btnShowLogin = document.getElementById('btn-show-login');
+const btnShowSignup = document.getElementById('btn-show-signup');
+const formLogin = document.getElementById('form-login');
+const formSignup = document.getElementById('form-signup');
+const authButtonsStart = document.getElementById('auth-choice');
+const btnBackFromLogin = document.getElementById('back-to-choice-1');
+const btnBackFromSignup = document.getElementById('back-to-choice-2');
+const submitLogin = document.getElementById('perform-login');
+const submitSignup = document.getElementById('perform-signup');
+
+// Nav & Layout
 const appLayout = document.getElementById('app-layout');
-const userEmailNav = document.getElementById('user-email-nav');
+const navUserProfile = document.getElementById('nav-user-pseudo');
 const logoutBtn = document.getElementById('auth-logout');
 const navLinks = document.querySelectorAll('.nav-link');
-const mainContent = document.getElementById('main-content');
 const allPages = document.querySelectorAll('.page-content');
+
+// Pages
 const historyGridJeux = document.getElementById('history-grid-jeux');
 const historyDetailsTitle = document.getElementById('history-details-title');
 const historyBackBtn = document.getElementById('history-back-btn');
 const listeHistoriquePartiesDetails = document.getElementById('liste-historique-parties-details');
+const listePartiesSauvegardees = document.getElementById('liste-parties-sauvegardees');
+const friendsListContainer = document.getElementById('friends-list-container');
 
+// Inputs Jeu
 const nomJeuConfigInput = document.getElementById('nom-jeu-config');
 const datalistJeux = document.getElementById('datalist-jeux');
 const nomJoueurInput = document.getElementById('nom-joueur');
+const couleurJoueurInput = document.getElementById('couleur-joueur');
+const selectAmiAjout = document.getElementById('select-ami-ajout');
+
+// Boutons Jeu
 const ajouterBouton = document.getElementById('ajouter-joueur');
+const demarrerBouton = document.getElementById('demarrer-partie');
+const validerTourBouton = document.getElementById('valider-tour');
+const annulerTourBouton = document.getElementById('annuler-tour');
+const sauvegarderBtn = document.getElementById('sauvegarder-partie');
+const arreterMaintenantBouton = document.getElementById('arreter-maintenant');
+const saveFeedback = document.getElementById('save-feedback');
+
+// Zones Affichage
 const suggestionsJoueursDiv = document.getElementById('suggestions-joueurs');
 const listeSuggestionsJoueurs = document.getElementById('liste-suggestions-joueurs');
-const demarrerBouton = document.getElementById('demarrer-partie');
 const listeJoueursConf = document.getElementById('liste-joueurs-conf');
 const scoreAffichageDiv = document.getElementById('score-affichage');
 const saisiePointsDiv = document.getElementById('saisie-points');
-const validerTourBouton = document.getElementById('valider-tour');
-const annulerTourBouton = document.getElementById('annuler-tour');
-
-const modeSecretConfig = document.getElementById('mode-secret-config');
-const arreterMaintenantBouton = document.getElementById('arreter-maintenant');
 const canvasGraphique = document.getElementById('graphique-scores');
-const couleurJoueurInput = document.getElementById('couleur-joueur');
-const revealEcran = document.getElementById('reveal-ecran');
-const revealContent = document.getElementById('reveal-content');
-const revealRang = document.getElementById('reveal-rang');
-const revealNom = document.getElementById('reveal-nom');
-const revealScore = document.getElementById('reveal-score');
-const skipAllBtn = document.getElementById('skip-all-btn');
-const retourAccueilBtn = document.getElementById('retour-accueil-btn');
 const manchesPasseesAffichage = document.getElementById('manches-passees');
 const manchesRestantesAffichageDiv = document.getElementById('manches-restantes-affichage');
 const manchesRestantesAffichage = document.getElementById('manches-restantes');
 const pointsRestantsAffichageDiv = document.getElementById('points-restants-affichage');
 const pointsRestantsAffichage = document.getElementById('points-restants');
+
+// Configs & Reveal
+const modeSecretConfig = document.getElementById('mode-secret-config');
 const conditionCheckboxes = document.querySelectorAll('.condition-checkbox');
 const scoreLimiteInput = document.getElementById('score-limite');
 const scoreRelatifInput = document.getElementById('score-relatif');
 const nbManchesTotalInput = document.getElementById('nb-manches-total');
 const nbManchesRestantesInput = document.getElementById('nb-manches-restantes');
-const listePartiesSauvegardees = document.getElementById('liste-parties-sauvegardees');
+const revealEcran = document.getElementById('reveal-ecran');
+const revealContent = document.getElementById('reveal-content');
+const revealRang = document.getElementById('reveal-rang');
+const revealNom = document.getElementById('reveal-nom');
+const revealNomPlaceholder = document.getElementById('reveal-nom-placeholder');
+const revealScore = document.getElementById('reveal-score');
+const skipAllBtn = document.getElementById('skip-all-btn');
+const retourAccueilBtn = document.getElementById('retour-accueil-btn');
 
+// Stats
 const historyPlayerSelect = document.getElementById('history-player-select');
 const canvasGraphiquePosition = document.getElementById('graphique-position-details');
 const statsTopJeuxListe = document.querySelector('#stats-top-jeux ol');
@@ -89,16 +127,23 @@ const statsJoueursPodiumListe = document.querySelector('#stats-joueurs-podium ol
 const addPlayerToGraphBtn = document.getElementById('add-player-to-graph-btn');
 const graphPlayersList = document.getElementById('graph-players-list');
 
+// Amis & Profil
 const friendEmailInput = document.getElementById('friend-email-input');
 const friendNicknameInput = document.getElementById('friend-nickname-input');
 const friendColorInput = document.getElementById('friend-color-input');
 const btnAddFriend = document.getElementById('btn-add-friend');
-const friendsListContainer = document.getElementById('friends-list-container');
 const friendAddMsg = document.getElementById('friend-add-msg');
-const selectAmiAjout = document.getElementById('select-ami-ajout');
+const profilePseudoInput = document.getElementById('profile-pseudo');
+const profileColorInput = document.getElementById('profile-color');
+const profileNewPassInput = document.getElementById('profile-new-password');
+const btnUpdateProfile = document.getElementById('btn-update-profile');
+const btnUpdatePassword = document.getElementById('btn-update-password');
+const profileMsg = document.getElementById('profile-msg');
 
 
-// --- NAVIGATION ---
+// =============================================================
+// 3. NAVIGATION & UI
+// =============================================================
 function showPage(pageId) {
     allPages.forEach(page => page.classList.add('cache'));
     const pageToShow = document.getElementById(pageId);
@@ -112,124 +157,388 @@ function showPage(pageId) {
         document.querySelector('.nav-link[data-page="page-history-grid"]').classList.add('active');
     }
 }
+navLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+        showPage(link.dataset.page);
+    });
+});
 
-// --- FONCTIONS UTILITAIRES ---
-function pause(ms) { return new Promise(resolve => { const timer = setTimeout(() => { currentStepSkipper = null; resolve(); }, ms); currentStepSkipper = () => { clearTimeout(timer); currentStepSkipper = null; resolve(); }; }); }
-function attendreFinAnimation(element) { return new Promise(resolve => { const onAnimEnd = () => { currentStepSkipper = null; resolve(); }; element.addEventListener('animationend', onAnimEnd, { once: true }); currentStepSkipper = () => { element.removeEventListener('animationend', onAnimEnd); currentStepSkipper = null; resolve(); }; }); }
-function calculerRangs(joueursTries) { let rangActuel = 0; let scorePrecedent = null; let nbExAequo = 1; joueursTries.forEach((joueur, index) => { if (joueur.scoreTotal !== scorePrecedent) { rangActuel += nbExAequo; nbExAequo = 1; } else { nbExAequo++; } joueur.rang = rangActuel; scorePrecedent = joueur.scoreTotal; }); return joueursTries; }
-function retirerJoueur(index) { joueurs.splice(index, 1); mettreAJourListeJoueurs(); verifierPeutDemarrer(); }
-function mettreAJourListeJoueurs() { listeJoueursConf.innerHTML = ''; if (joueurs.length === 0) { listeJoueursConf.innerHTML = '<p>Ajoutez au moins deux joueurs pour commencer.</p>'; return; } joueurs.forEach((joueur, index) => { const tag = document.createElement('div'); tag.className = 'joueur-tag'; const swatch = document.createElement('span'); swatch.className = 'joueur-couleur-swatch'; swatch.style.backgroundColor = joueur.couleur; const nom = document.createElement('span'); nom.textContent = joueur.nom; const retirerBtn = document.createElement('button'); retirerBtn.className = 'bouton-retirer'; retirerBtn.innerHTML = '&times;'; retirerBtn.title = `Retirer ${joueur.nom}`; retirerBtn.addEventListener('click', () => { retirerJoueur(index); }); tag.appendChild(swatch); tag.appendChild(nom); tag.appendChild(retirerBtn); listeJoueursConf.appendChild(tag); }); }
-function verifierPeutDemarrer() { demarrerBouton.disabled = joueurs.length < 2; }
-function genererChampsSaisie() { saisiePointsDiv.innerHTML = ''; joueurs.forEach((joueur, index) => { const div = document.createElement('div'); div.className = 'saisie-item'; div.innerHTML = ` <label for="score-${index}"> <span class="score-couleur-swatch" style="background-color: ${joueur.couleur};"></span> ${joueur.nom} : </label> <input type="number" id="score-${index}" value="0"> `; saisiePointsDiv.appendChild(div); }); }
-function mettreAJourScoresAffichage() { scoreAffichageDiv.innerHTML = ''; let listePourAffichage = []; if (!scoresSecrets) { let joueursTries = [...joueurs].sort((a, b) => { return lowScoreWins ? a.scoreTotal - b.scoreTotal : b.scoreTotal - a.scoreTotal; }); listePourAffichage = calculerRangs(joueursTries); } else { listePourAffichage = joueurs; } let html = '<table class="classement-table">'; html += '<thead><tr><th>#</th><th>Joueur</th><th>Total</th></tr></thead>'; html += '<tbody>'; listePourAffichage.forEach((joueur) => { const rangAffichage = joueur.rang && !scoresSecrets ? joueur.rang : '-'; html += ` <tr> <td>${rangAffichage}</td> <td> <span class="score-couleur-swatch" style="background-color: ${joueur.couleur};"></span> ${joueur.nom} </td> <td class="score-total">${scoresSecrets ? '???' : `${joueur.scoreTotal} pts`}</td> </tr> `; }); html += '</tbody></table>'; scoreAffichageDiv.innerHTML = html; }
-function mettreAJourCompteurs() { manchesPasseesAffichage.textContent = mancheActuelle; let restantesManches = Infinity; let afficherManchesRestantes = false; if (conditionsArret.manche_total.active) { const totalManches = conditionsArret.manche_total.mancheCible; restantesManches = Math.max(0, totalManches - mancheActuelle); afficherManchesRestantes = true; } if (conditionsArret.manche_restante.active) { const mancheCible = conditionsArret.manche_restante.mancheCible; const restantesDynamiques = Math.max(0, mancheCible - mancheActuelle); restantesManches = Math.min(restantesManches, restantesDynamiques); afficherManchesRestantes = true; } if (afficherManchesRestantes) { manchesRestantesAffichage.textContent = restantesManches; manchesRestantesAffichageDiv.classList.remove('cache'); } else { manchesRestantesAffichageDiv.classList.add('cache'); } let pointsMinRestants = Infinity; let afficherPointsRestants = false; if (conditionsArret.score_limite.active) { const scoreMax = Math.max(...joueurs.map(j => j.scoreTotal)); const restantsAbsolu = Math.max(0, conditionsArret.score_limite.valeur - scoreMax); pointsMinRestants = Math.min(pointsMinRestants, restantsAbsolu); afficherPointsRestants = true; } if (conditionsArret.score_relatif.active) { joueurs.forEach(joueur => { let limiteCible = (joueur.scoreRelatifPivot || 0) + conditionsArret.score_relatif.valeur; const restantsRelatif = Math.max(0, limiteCible - joueur.scoreTotal); pointsMinRestants = Math.min(pointsMinRestants, restantsRelatif); }); afficherPointsRestants = true; } if (afficherPointsRestants) { pointsRestantsAffichage.textContent = pointsMinRestants; pointsRestantsAffichageDiv.classList.remove('cache'); } else { pointsRestantsAffichageDiv.classList.add('cache'); } }
-function verifierConditionsArret() { if (validerTourBouton.disabled) return; let doitTerminer = false; if (conditionsArret.score_limite.active && conditionsArret.score_limite.valeur > 0) { if (joueurs.some(j => j.scoreTotal >= conditionsArret.score_limite.valeur)) { doitTerminer = true; } } if (conditionsArret.score_relatif.active && conditionsArret.score_relatif.valeur > 0) { joueurs.forEach(joueur => { let limiteCible = (joueur.scoreRelatifPivot || 0) + conditionsArret.score_relatif.valeur; if (joueur.scoreTotal >= limiteCible) { doitTerminer = true; } }); } if (conditionsArret.manche_total.active && mancheActuelle >= conditionsArret.manche_total.mancheCible && conditionsArret.manche_total.mancheCible > 0) { doitTerminer = true; } if (conditionsArret.manche_restante.active && mancheActuelle >= conditionsArret.manche_restante.mancheCible && conditionsArret.manche_restante.mancheCible > 0) { doitTerminer = true; } if (doitTerminer) { terminerPartie(); } }
-function construirePodiumFinal() { currentStepSkipper = null; const podiumMap = { 1: document.getElementById('podium-1'), 2: document.getElementById('podium-2'), 3: document.getElementById('podium-3') }; Object.values(podiumMap).forEach(el => el.classList.remove('cache')); const premier = classementFinal.filter(j => j.rang === 1); const deuxieme = classementFinal.filter(j => j.rang === 2); const troisieme = classementFinal.filter(j => j.rang === 3); const remplirPlace = (element, joueursPlace) => { if (joueursPlace.length > 0) { const joueurRef = joueursPlace[0]; const noms = joueursPlace.map(j => j.nom).join(' & '); element.querySelector('.podium-nom').textContent = noms; element.querySelector('.podium-score').textContent = `${joueurRef.scoreTotal} pts`; element.style.borderColor = joueurRef.couleur; element.style.boxShadow = `0 0 15px ${joueurRef.couleur}80`; } else { element.classList.add('cache'); } }; remplirPlace(podiumMap[1], premier); remplirPlace(podiumMap[2], deuxieme); remplirPlace(podiumMap[3], troisieme); const autresListe = document.getElementById('autres-joueurs-liste'); autresListe.innerHTML = ''; const autresJoueurs = classementFinal.filter(j => j.rang > 3); if(autresJoueurs.length === 0) { document.getElementById('autres-joueurs').classList.add('cache'); } else { document.getElementById('autres-joueurs').classList.remove('cache'); autresJoueurs.sort((a, b) => a.rang - b.rang); autresJoueurs.forEach((joueur) => { const li = document.createElement('li'); li.innerHTML = ` <span class="score-couleur-swatch" style="background-color: ${joueur.couleur};"></span> <strong>${joueur.rang}. ${joueur.nom}</strong> (${joueur.scoreTotal} pts) `; autresListe.appendChild(li); }); } const graphContainer = document.querySelector('.graphique-container'); const graphPlaceholder = document.getElementById('graphique-final-container'); if (graphContainer && graphPlaceholder) { graphPlaceholder.innerHTML = ''; graphPlaceholder.appendChild(graphContainer); if (monGraphique) { monGraphique.resize(); } } }
-function majContenuReveal(rang, joueur, estExAequoPrecedent) { let rangTexte = `${rang}ème Place`; if (estExAequoPrecedent) { rangTexte = `Ex æquo ${rang}ème Place`; } if (rang === 3) rangTexte = `🥉 ${estExAequoPrecedent ? 'Ex æquo ' : ''}3ème Place`; if (rang === 1) rangTexte = `🥇 GAGNANT ${estExAequoPrecedent ? 'Ex æquo ' : ''}!`; revealRang.textContent = rangTexte; revealNom.textContent = joueur.nom; revealNom.style.color = joueur.couleur; revealScore.textContent = `${joueur.scoreTotal} points`; revealContent.classList.remove('is-revealed'); }
-async function demarrerSequenceReveal() { showPage('page-score'); revealEcran.classList.remove('cache'); let joueursAReveler = []; joueursAReveler.push(...classementFinal.filter(j => j.rang > 2).reverse()); joueursAReveler.push(...classementFinal.filter(j => j.rang === 1)); let rangPrecedent = null; for (const joueur of joueursAReveler) { if (sequenceForceStop) return; const rang = joueur.rang; const estExAequo = (rang === rangPrecedent); majContenuReveal(rang, joueur, estExAequo); revealContent.classList.add('slide-in-from-left'); await attendreFinAnimation(revealContent); revealContent.classList.remove('slide-in-from-left'); if (sequenceForceStop) return; await pause(1500); if (sequenceForceStop) return; revealContent.classList.add('shake-reveal'); await attendreFinAnimation(revealContent); revealContent.classList.remove('shake-reveal'); revealContent.classList.add('is-revealed'); if (sequenceForceStop) return; await pause(2500); if (sequenceForceStop) return; if (joueur !== joueursAReveler[joueursAReveler.length - 1]) { revealContent.classList.add('slide-out-to-right'); await attendreFinAnimation(revealContent); revealContent.classList.remove('slide-out-to-right', 'is-revealed'); } rangPrecedent = rang; } revealEcran.classList.add('cache'); showPage('page-podium'); construirePodiumFinal(); }
-function terminerPartie() { sequenceForceStop = false; validerTourBouton.disabled = true; arreterMaintenantBouton.disabled = true; const graphContainer = document.querySelector('.graphique-container'); if (graphContainer) { graphContainer.classList.remove('cache'); } let joueursTries = [...joueurs].sort((a, b) => { return lowScoreWins ? a.scoreTotal - b.scoreTotal : b.scoreTotal - a.scoreTotal; }); classementFinal = calculerRangs(joueursTries); sauvegarderHistoriquePartie(classementFinal); if (scoresSecrets) { scoresSecrets = false; mettreAJourScoresAffichage(); if (monGraphique) { monGraphique.data.labels = ['Manche 0']; monGraphique.data.datasets.forEach(dataset => { dataset.data = [0]; }); let scoreCumules = new Array(joueurs.length).fill(0); for (let i = 0; i < mancheActuelle; i++) { if(monGraphique.data.labels.length <= i + 1) { monGraphique.data.labels.push(`Manche ${i + 1}`); } joueurs.forEach((joueur, index) => { const scoreDeCeTour = joueur.scoresTour[i] || 0; scoreCumules[index] += scoreDeCeTour; monGraphique.data.datasets[index].data[i+1] = scoreCumules[index]; }); } const maxDataLength = Math.max(...monGraphique.data.datasets.map(d => d.data.length)); while(monGraphique.data.labels.length < maxDataLength) { monGraphique.data.labels.push(`Manche ${monGraphique.data.labels.length}`); } monGraphique.update(); monGraphique.resize(); } alert("FIN DE PARTIE : Les scores secrets sont révélés !"); setTimeout(demarrerSequenceReveal, 100); } else { mettreAJourScoresAffichage(); demarrerSequenceReveal(); } }
+function afficherAuthErreur(message) { 
+    authErreur.textContent = message; 
+    authErreur.classList.remove('cache'); 
+}
 
-// --- FONCTIONS GRAPHIQUE ---
-function genererCouleurAleatoire() { const couleurs = [ '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#E7E9ED', '#8036EB', '#FFAB91', '#81D4FA', '#FFF59D', '#A5D6A7' ]; let couleursPrises = joueurs.map(j => j.couleur.toUpperCase()); let couleurDispo = couleurs.find(c => !couleursPrises.includes(c)); if (couleurDispo) { return couleurDispo; } return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'); }
-function creerGraphique() { if (monGraphique) { monGraphique.destroy(); } const datasets = joueurs.map((joueur, index) => ({ label: joueur.nom, data: [0], borderColor: joueur.couleur, backgroundColor: joueur.couleur + '33', fill: false, tension: 0.1 })); monGraphique = new Chart(canvasGraphique, { type: 'line', data: { labels: ['Manche 0'], datasets: datasets }, options: { responsive: true, plugins: { legend: { position: 'top' }, title: { display: false } }, scales: { y: { title: { display: true, text: 'Points' } }, x: { title: { display: true, text: 'Manches' } } } } }); }
-function mettreAJourGraphique() { if (!monGraphique) { return; } const labelManche = 'Manche ' + mancheActuelle; if (!monGraphique.data.labels.includes(labelManche)) { monGraphique.data.labels.push(labelManche); } joueurs.forEach((joueur, index) => { if(monGraphique.data.datasets[index]) { if (monGraphique.data.datasets[index].data.length <= mancheActuelle) { monGraphique.data.datasets[index].data.push(joueur.scoreTotal); } else { monGraphique.data.datasets[index].data[mancheActuelle] = joueur.scoreTotal; } } }); monGraphique.update(); }
-function recreerGraphiqueFinal() { const graphContainer = document.querySelector('.graphique-container'); const graphPlaceholder = document.getElementById('graphique-final-container'); if (graphContainer && graphPlaceholder) { if (!graphPlaceholder.contains(graphContainer)) { graphPlaceholder.innerHTML = ''; graphPlaceholder.appendChild(graphContainer); } } if (monGraphique) { monGraphique.destroy(); } const datasets = joueurs.map((joueur, index) => ({ label: joueur.nom, data: [0], borderColor: joueur.couleur, backgroundColor: joueur.couleur + '33', fill: false, tension: 0.1 })); monGraphique = new Chart(canvasGraphique, { type: 'line', data: { labels: ['Manche 0'], datasets: datasets }, options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { title: { display: true, text: 'Points' } }, x: { title: { display: true, text: 'Manches' } } } } }); let scoreCumules = new Array(joueurs.length).fill(0); for (let i = 0; i < mancheActuelle; i++) { if(monGraphique.data.labels.length <= i + 1) { monGraphique.data.labels.push(`Manche ${i + 1}`); } joueurs.forEach((joueur, index) => { const scoreDeCeTour = (joueur.scoresTour && joueur.scoresTour[i]) ? joueur.scoresTour[i] : 0; scoreCumules[index] += scoreDeCeTour; if(monGraphique.data.datasets[index]) { monGraphique.data.datasets[index].data[i+1] = scoreCumules[index]; } }); } monGraphique.update(); monGraphique.resize(); }
+// =============================================================
+// 4. AUTHENTIFICATION
+// =============================================================
+btnShowLogin.onclick = () => { authButtonsStart.classList.add('cache'); formLogin.classList.remove('cache'); authErreur.classList.add('cache'); };
+btnShowSignup.onclick = () => { authButtonsStart.classList.add('cache'); formSignup.classList.remove('cache'); authErreur.classList.add('cache'); };
+btnBackFromLogin.onclick = () => { formLogin.classList.add('cache'); authButtonsStart.classList.remove('cache'); authErreur.classList.add('cache'); };
+btnBackFromSignup.onclick = () => { formSignup.classList.add('cache'); authButtonsStart.classList.remove('cache'); authErreur.classList.add('cache'); };
 
-// --- GESTION DES ÉVÉNEMENTS (Conditions, Ajout Joueur) ---
-conditionCheckboxes.forEach(checkbox => { checkbox.addEventListener('change', (e) => { const type = e.target.dataset.type; const inputId = inputIdMap[type]; const input = document.getElementById(inputId); if (input) { input.disabled = !checkbox.checked; } mettreAJourConditionsArret(); mettreAJourCompteurs(); }); });
-[scoreLimiteInput, scoreRelatifInput, nbManchesTotalInput, nbManchesRestantesInput].forEach(input => { input.addEventListener('change', () => { mettreAJourConditionsArret(); mettreAJourCompteurs(); }); });
-function mettreAJourConditionsArret() { for (const key in conditionsArret) { conditionsArret[key].active = false; } document.querySelectorAll('.condition-checkbox:checked').forEach(checkbox => { const type = checkbox.dataset.type; conditionsArret[type].active = true; const inputId = inputIdMap[type]; const inputElement = document.getElementById(inputId); const valeur = parseInt(inputElement.value, 10) || 0; if (type === 'score_limite') { conditionsArret.score_limite.valeur = valeur; } else if (type === 'score_relatif') { conditionsArret[type].valeur = valeur; joueurs.forEach(j => { j.scoreRelatifPivot = j.scoreTotal; }); } else if (type === 'manche_total') { conditionsArret.manche_total.mancheCible = valeur; } else if (type === 'manche_restante') { conditionsArret.manche_restante.mancheCible = mancheActuelle + valeur; } }); }
+submitSignup.addEventListener('click', () => { 
+    const email = document.getElementById('signup-email').value; 
+    const password = document.getElementById('signup-password').value;
+    const pseudo = document.getElementById('signup-pseudo').value;
+    const couleur = document.getElementById('signup-color').value;
 
-// MODIFIÉ : Ajouter Joueur (Prend en compte l'ami sélectionné)
+    if(!email || !password || !pseudo) { afficherAuthErreur("Veuillez remplir tous les champs."); return; }
+
+    auth.createUserWithEmailAndPassword(email, password)
+        .then((userCredential) => {
+            const user = userCredential.user;
+            creerProfilPublic(user, pseudo, couleur);
+            db.collection('utilisateurs').doc(user.uid).set({ pseudo: pseudo, couleur: couleur }, { merge: true });
+        })
+        .catch(err => { afficherAuthErreur(err.message); }); 
+});
+
+function creerProfilPublic(user, pseudo, couleur) {
+    db.collection('users_public').doc(user.uid).set({
+        email: user.email, uid: user.uid, pseudo: pseudo, couleur: couleur
+    }).catch(err => console.error("Erreur profil public", err));
+}
+
+submitLogin.addEventListener('click', () => { 
+    const email = document.getElementById('login-email').value; 
+    const password = document.getElementById('login-password').value; 
+    auth.signInWithEmailAndPassword(email, password).catch(err => { afficherAuthErreur(err.message); }); 
+});
+
+logoutBtn.addEventListener('click', () => { auth.signOut(); });
+
+// INITIALISATION AU CHARGEMENT
+auth.onAuthStateChanged(user => {
+    if (user) {
+        currentUser = user;
+        authEcran.classList.add('cache');
+        appLayout.classList.remove('cache'); 
+        
+        db.collection('utilisateurs').doc(user.uid).get().then(doc => {
+            let pseudoAffiche = user.email;
+            let couleurAffiche = "#e67e22";
+            if(doc.exists) {
+                const data = doc.data();
+                if(data.pseudo) pseudoAffiche = data.pseudo;
+                if(data.couleur) couleurAffiche = data.couleur;
+            } else {
+                creerProfilPublic(user, user.email.split('@')[0], genererCouleurAleatoire());
+            }
+            
+            // Mise à jour variables globales
+            monProfilLocal.nom = pseudoAffiche;
+            monProfilLocal.couleur = couleurAffiche;
+            monProfilLocal.uid = user.uid;
+
+            // Mise à jour UI
+            navUserProfile.textContent = pseudoAffiche;
+            profilePseudoInput.value = pseudoAffiche;
+            profileColorInput.value = couleurAffiche;
+
+            // Initialiser listes
+            resetConfigurationPartie();
+            chargerAmis(); // Appelé ICI pour avoir le profil prêt
+        });
+
+        chargerListeParties();
+        chargerHistoriqueParties();
+        chargerCategoriesConnues();
+        chargerJoueursRecents();
+        
+        showPage('page-new-game'); 
+    } else {
+        currentUser = null;
+        authEcran.classList.remove('cache');
+        appLayout.classList.add('cache');
+        formLogin.classList.add('cache');
+        formSignup.classList.add('cache');
+        authButtonsStart.classList.remove('cache');
+    }
+});
+
+// =============================================================
+// 5. GESTION DU PROFIL
+// =============================================================
+btnUpdateProfile.addEventListener('click', () => {
+    if(!currentUser) return;
+    const newPseudo = profilePseudoInput.value.trim();
+    const newColor = profileColorInput.value;
+    if(!newPseudo) { alert("Le pseudo ne peut pas être vide"); return; }
+    const userRef = db.collection('utilisateurs').doc(currentUser.uid);
+    const publicRef = db.collection('users_public').doc(currentUser.uid);
+
+    userRef.set({ pseudo: newPseudo, couleur: newColor }, { merge: true })
+    .then(() => publicRef.set({ pseudo: newPseudo, couleur: newColor }, { merge: true }))
+    .then(() => {
+        navUserProfile.textContent = newPseudo;
+        monProfilLocal.nom = newPseudo;
+        monProfilLocal.couleur = newColor;
+        
+        profileMsg.textContent = "Profil mis à jour !";
+        profileMsg.style.color = "green";
+        profileMsg.classList.remove('cache');
+        setTimeout(() => profileMsg.classList.add('cache'), 3000);
+        
+        // Refresh UI qui dépend du profil
+        resetConfigurationPartie();
+        chargerAmis();
+    });
+});
+
+btnUpdatePassword.addEventListener('click', () => {
+    const newPass = profileNewPassInput.value;
+    if(!newPass || newPass.length < 6) { alert("Min 6 caractères."); return; }
+    if(currentUser) {
+        currentUser.updatePassword(newPass).then(() => {
+            profileMsg.textContent = "Mot de passe modifié !";
+            profileMsg.style.color = "green";
+            profileMsg.classList.remove('cache');
+            profileNewPassInput.value = "";
+        }).catch((err) => {
+            profileMsg.textContent = "Erreur (Reconnectez-vous).";
+            profileMsg.style.color = "red";
+            profileMsg.classList.remove('cache');
+        });
+    }
+});
+
+// =============================================================
+// 6. LOGIQUE JEU - CONFIGURATION
+// =============================================================
+
+function genererCouleurAleatoire() { return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'); }
+
+function resetConfigurationPartie() {
+    joueurs = [];
+    if(monProfilLocal.uid) {
+        joueurs.push({
+            nom: monProfilLocal.nom,
+            couleur: monProfilLocal.couleur,
+            uid: monProfilLocal.uid, 
+            scoreTotal: 0, scoresTour: [], rang: null
+        });
+    }
+    mettreAJourListeJoueurs();
+}
+
 ajouterBouton.addEventListener('click', () => {
     let nom = nomJoueurInput.value.trim();
     let couleur = couleurJoueurInput.value;
     let uidAmi = null;
 
-    // Vérifie si un ami est sélectionné
     const selectedAmiIndex = selectAmiAjout.selectedIndex;
-    if (selectedAmiIndex > 0) { // Si ce n'est pas l'option par défaut
+    if (selectedAmiIndex > 0) { 
         const option = selectAmiAjout.options[selectedAmiIndex];
-        nom = option.text; // Le nom affiché (pseudo)
-        uidAmi = option.value; // L'UID de l'ami
-        // Si l'ami a une couleur perso, on la prend
-        if (option.dataset.couleur) {
-             couleur = option.dataset.couleur;
-        }
+        nom = option.text.replace('👤 Moi (', '').replace(')', ''); // Nettoyage au cas où on sélectionne "Moi"
+        uidAmi = option.value; 
+        if (option.dataset.couleur) couleur = option.dataset.couleur;
     }
 
     if (nom && !joueurs.some(j => j.nom === nom)) {
-        joueurs.push({ 
-            nom: nom, 
-            couleur: couleur, 
-            scoreTotal: 0, 
-            scoresTour: [], 
-            scoreRelatifPivot: 0, 
-            rang: null,
-            uid: uidAmi 
-        });
-        
-        // Reset inputs
+        joueurs.push({ nom: nom, couleur: couleur, scoreTotal: 0, scoresTour: [], rang: null, uid: uidAmi });
         nomJoueurInput.value = '';
         couleurJoueurInput.value = genererCouleurAleatoire();
-        selectAmiAjout.value = ""; // Reset select
-        
+        selectAmiAjout.value = ""; 
         mettreAJourListeJoueurs();
         verifierPeutDemarrer();
-    } else if (joueurs.some(j => j.nom === nom)) {
-        alert(`Le joueur "${nom}" existe déjà !`);
     }
 });
 
-// Écouteur pour mettre à jour la couleur quand on sélectionne un ami
 selectAmiAjout.addEventListener('change', () => {
-    const selectedAmiIndex = selectAmiAjout.selectedIndex;
-    if (selectedAmiIndex > 0) {
-        const option = selectAmiAjout.options[selectedAmiIndex];
-        if (option.dataset.couleur) {
-            couleurJoueurInput.value = option.dataset.couleur;
-        }
+    const idx = selectAmiAjout.selectedIndex;
+    if (idx > 0) {
+        const option = selectAmiAjout.options[idx];
+        if (option.dataset.couleur) couleurJoueurInput.value = option.dataset.couleur;
     } else {
         couleurJoueurInput.value = genererCouleurAleatoire();
     }
 });
 
-nomJoueurInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { ajouterBouton.click(); } });
+function mettreAJourListeJoueurs() { 
+    listeJoueursConf.innerHTML = ''; 
+    if (joueurs.length === 0) { listeJoueursConf.innerHTML = '<p>Ajoutez des joueurs.</p>'; } 
+    joueurs.forEach((joueur, index) => { 
+        const tag = document.createElement('div'); tag.className = 'joueur-tag'; 
+        const isMe = (joueur.uid === currentUser?.uid);
+        const nomDisplay = isMe ? `<strong>${joueur.nom} (Moi)</strong>` : joueur.nom;
+        tag.innerHTML = `<span class="joueur-couleur-swatch" style="background:${joueur.couleur}"></span>${nomDisplay} <button class="bouton-retirer">&times;</button>`;
+        tag.querySelector('button').onclick = () => { joueurs.splice(index, 1); mettreAJourListeJoueurs(); verifierPeutDemarrer(); };
+        listeJoueursConf.appendChild(tag); 
+    }); 
+    verifierPeutDemarrer();
+}
+
+function verifierPeutDemarrer() { demarrerBouton.disabled = joueurs.length < 2; }
+
+// --- DÉMARRAGE ---
 demarrerBouton.addEventListener('click', () => {
-    sequenceForceStop = false; if (joueurs.length < 2) return; 
+    sequenceForceStop = false; 
+    if (joueurs.length < 2) return; 
+    
+    partieIdActuelle = null; 
+
     nomJeuActuel = nomJeuConfigInput.value.trim() || "Partie";
     scoresSecrets = modeSecretConfig.checked; 
     const victoireChoix = document.querySelector('input[name="condition-victoire"]:checked').value; 
     lowScoreWins = (victoireChoix === 'low'); 
     mancheActuelle = 0;
     
-    // Reset stats joueurs mais garde l'UID
-    joueurs.forEach(j => { j.scoreTotal = 0; j.scoresTour = []; j.scoreRelatifPivot = 0; j.rang = null; }); 
+    joueurs.forEach(j => { j.scoreTotal = 0; j.scoresTour = []; j.rang = null; }); 
     
     if (currentUser) {
         const userRef = db.collection('utilisateurs').doc(currentUser.uid);
-        const joueursRecentsRef = userRef.collection('joueursRecents');
         joueurs.forEach(j => {
-            joueursRecentsRef.doc(j.nom).set({ nom: j.nom, couleur: j.couleur });
+            if(j.uid !== currentUser.uid) { // Save others only
+                userRef.collection('joueursRecents').doc(j.nom).set({ nom: j.nom, couleur: j.couleur });
+            }
         });
-        joueurs.forEach(j => {
-            const index = joueursRecents.findIndex(jr => jr.nom === j.nom);
-            if (index > -1) { joueursRecents[index].couleur = j.couleur; } else { joueursRecents.push({ nom: j.nom, couleur: j.couleur }); }
-        });
-        afficherSuggestionsJoueurs();
+        chargerJoueursRecents();
     }
+    
     const graphContainer = document.querySelector('.graphique-container'); 
     const graphOriginalParent = document.getElementById('page-score').querySelector('.score-gauche');
     const inputTourDiv = document.getElementById('page-score').querySelector('.input-tour');
-    if (graphContainer && graphOriginalParent && inputTourDiv) { 
-        graphOriginalParent.insertBefore(graphContainer, inputTourDiv); 
-    }
-    if (scoresSecrets) { if (graphContainer) graphContainer.classList.add('cache'); } else { if (graphContainer) graphContainer.classList.remove('cache'); }
+    if (graphContainer && graphOriginalParent && inputTourDiv) { graphOriginalParent.insertBefore(graphContainer, inputTourDiv); }
+    if (scoresSecrets) graphContainer.classList.add('cache'); else graphContainer.classList.remove('cache');
+    
     mettreAJourConditionsArret(); 
     showPage('page-score');
-    genererChampsSaisie(); mettreAJourScoresAffichage(); mettreAJourCompteurs(); creerGraphique();
+    genererChampsSaisie(); 
+    mettreAJourScoresAffichage(); 
+    mettreAJourCompteurs(); 
+    creerGraphique();
     
     sauvegarderPartieEnCours(true);
+});
+
+// =============================================================
+// 7. IN-GAME LOGIC
+// =============================================================
+async function sauvegarderPartieEnCours(isNew = false) {
+    if (!currentUser) return;
+    if (validerTourBouton.disabled && !isNew) return;
+
+    const etatPartie = { 
+        joueurs, mancheActuelle, scoresSecrets, lowScoreWins, conditionsArret, 
+        nomJeuActuel, dernierSauvegarde: new Date().toISOString() 
+    }; 
+    
+    const userRef = db.collection('utilisateurs').doc(currentUser.uid); 
+    const partiesRef = userRef.collection('parties'); 
+    
+    sauvegarderBtn.disabled = true; 
+    saveFeedback.textContent = "Sauvegarde..."; 
+    saveFeedback.classList.remove('cache'); 
+    
+    try { 
+        if (partieIdActuelle) { 
+            await partiesRef.doc(partieIdActuelle).set(etatPartie, { merge: true }); 
+        } else { 
+            const docRef = await partiesRef.add(etatPartie); 
+            partieIdActuelle = docRef.id; 
+        } 
+        saveFeedback.textContent = "Sauvegardé !"; 
+        setTimeout(() => saveFeedback.textContent = "", 2000); 
+        chargerListeParties(); 
+    } catch (err) { 
+        console.error("Erreur save: ", err); 
+        saveFeedback.textContent = "Erreur."; 
+    } finally { 
+        sauvegarderBtn.disabled = false; 
+    }
+}
+
+function chargerListeParties() { 
+    if (!currentUser) return; 
+    const userRef = db.collection('utilisateurs').doc(currentUser.uid); 
+    listePartiesSauvegardees.innerHTML = "Chargement..."; 
+    
+    userRef.collection('parties').orderBy('dernierSauvegarde', 'desc').get() 
+    .then(querySnapshot => { 
+        if (querySnapshot.empty) { listePartiesSauvegardees.innerHTML = "<p>Aucune partie en cours.</p>"; return; } 
+        listePartiesSauvegardees.innerHTML = ""; 
+        
+        querySnapshot.forEach(doc => { 
+            const partie = doc.data(); 
+            const nomsJoueurs = partie.joueurs ? partie.joueurs.map(j => j.nom).join(', ') : "Inconnu"; 
+            const nomJeu = partie.nomJeuActuel || "Jeu";
+            
+            const div = document.createElement('div'); 
+            div.className = "partie-historique"; 
+            div.innerHTML = ` 
+                <div class="header-info"> 
+                    <span style="font-size:1em;"><strong>${nomJeu}</strong> - Manche ${partie.mancheActuelle} <br><span style="font-size:0.8em; color:#666;">${nomsJoueurs}</span></span> 
+                    <div class="action-buttons"> 
+                        <button class="charger-btn" data-id="${doc.id}" style="background-color: #28a745;">Reprendre</button> 
+                        <button class="supprimer-btn" data-id="${doc.id}" style="background-color: #dc3545;">&times;</button> 
+                    </div> 
+                </div> 
+            `; 
+            listePartiesSauvegardees.appendChild(div); 
+        }); 
+    }); 
+}
+
+listePartiesSauvegardees.addEventListener('click', e => { 
+    const target = e.target; 
+    const id = target.dataset.id; 
+    if (!id || !currentUser) return; 
+    
+    const partieRef = db.collection('utilisateurs').doc(currentUser.uid).collection('parties').doc(id); 
+    
+    if (target.classList.contains('charger-btn')) { 
+        partieRef.get().then(doc => { 
+            if (doc.exists) { 
+                const etatPartie = doc.data(); 
+                partieIdActuelle = doc.id; 
+                
+                joueurs = etatPartie.joueurs; 
+                mancheActuelle = etatPartie.mancheActuelle; 
+                scoresSecrets = etatPartie.scoresSecrets; 
+                lowScoreWins = etatPartie.lowScoreWins; 
+                conditionsArret = etatPartie.conditionsArret || conditionsArret; 
+                nomJeuActuel = etatPartie.nomJeuActuel || "Partie";
+
+                showPage('page-score'); 
+                validerTourBouton.disabled = false; 
+                arreterMaintenantBouton.disabled = false; 
+                
+                document.querySelectorAll('.condition-checkbox').forEach(cb => { 
+                    const type = cb.dataset.type; 
+                    if (conditionsArret[type]) { 
+                        cb.checked = conditionsArret[type].active; 
+                        const input = document.getElementById(inputIdMap[type]); 
+                        if(input) { 
+                            input.disabled = !cb.checked; 
+                            if (type === 'manche_total') input.value = conditionsArret[type].mancheCible; 
+                            else if(type.includes('score')) input.value = conditionsArret[type].valeur;
+                        } 
+                    } 
+                }); 
+                
+                genererChampsSaisie(); 
+                mettreAJourScoresAffichage(); 
+                creerGraphique(); 
+                if (!scoresSecrets && monGraphique) { 
+                     monGraphique.data.labels = ['Manche 0'];
+                     joueurs.forEach((j, idx) => {
+                         let cum = 0;
+                         const data = [0];
+                         j.scoresTour.forEach(s => { cum += s; data.push(cum); });
+                         if(monGraphique.data.datasets[idx]) monGraphique.data.datasets[idx].data = data;
+                     });
+                     for(let i=1; i<=mancheActuelle; i++) if(monGraphique.data.labels.length <= i) monGraphique.data.labels.push(`Manche ${i}`);
+                     monGraphique.update(); 
+                } 
+                mettreAJourCompteurs(); 
+            } 
+        }); 
+    } else if (target.classList.contains('supprimer-btn')) { 
+        if (confirm("Supprimer cette partie ?")) { 
+            partieRef.delete().then(() => { chargerListeParties(); }); 
+        } 
+    } 
 });
 
 validerTourBouton.addEventListener('click', () => { 
@@ -246,545 +555,99 @@ validerTourBouton.addEventListener('click', () => {
     mettreAJourCompteurs(); 
     mettreAJourGraphique(); 
     verifierConditionsArret(); 
-    
     sauvegarderPartieEnCours();
 });
 
 annulerTourBouton.addEventListener('click', () => {
-    if (mancheActuelle > 0) {
-        if (confirm("Voulez-vous vraiment annuler le dernier tour pour le corriger ?")) {
-            mancheActuelle--;
-            
-            joueurs.forEach((joueur, index) => {
-                const dernierScore = joueur.scoresTour.pop();
-                
-                if (dernierScore !== undefined) {
-                    joueur.scoreTotal -= dernierScore;
-                    
-                    const inputElement = document.getElementById(`score-${index}`);
-                    if (inputElement) {
-                        inputElement.value = dernierScore;
-                    }
-                }
-            });
-
-            if (monGraphique) {
-                monGraphique.data.labels.pop(); 
-                monGraphique.data.datasets.forEach(dataset => {
-                    dataset.data.pop(); 
-                });
-                monGraphique.update();
+    if (mancheActuelle > 0 && confirm("Annuler le dernier tour ?")) {
+        mancheActuelle--;
+        joueurs.forEach((joueur, index) => {
+            const dernierScore = joueur.scoresTour.pop();
+            if (dernierScore !== undefined) {
+                joueur.scoreTotal -= dernierScore;
+                const inputElement = document.getElementById(`score-${index}`);
+                if (inputElement) inputElement.value = dernierScore;
             }
-
-            mettreAJourScoresAffichage();
-            mettreAJourCompteurs();
-            sauvegarderPartieEnCours();
-        }
-    } else {
-        alert("Impossible d'annuler : aucun tour n'a été joué.");
-    }
-});
-
-
-arreterMaintenantBouton.addEventListener('click', terminerPartie);
-revealEcran.addEventListener('click', (e) => { if (e.target.closest('#skip-all-btn') || e.target.closest('#reveal-content')) { return; } if (currentStepSkipper) { currentStepSkipper(); } });
-skipAllBtn.addEventListener('click', () => {
-    sequenceForceStop = true; 
-    if (currentStepSkipper) { currentStepSkipper(); } 
-    revealEcran.classList.add('cache'); 
-    showPage('page-podium');
-    construirePodiumFinal(); 
-});
-retourAccueilBtn.addEventListener('click', () => {
-    showPage('page-ongoing-games');
-    const graphContainer = document.querySelector('.graphique-container');
-    const graphOriginalParent = document.getElementById('page-score').querySelector('.score-gauche');
-    const inputTourDiv = document.getElementById('page-score').querySelector('.input-tour');
-    if (graphContainer && graphOriginalParent && inputTourDiv) {
-        graphOriginalParent.insertBefore(graphContainer, inputTourDiv);
+        });
         if (monGraphique) {
-            monGraphique.destroy(); 
-            monGraphique = null;
+            monGraphique.data.labels.pop(); 
+            monGraphique.data.datasets.forEach(ds => ds.data.pop()); 
+            monGraphique.update();
         }
+        mettreAJourScoresAffichage();
+        mettreAJourCompteurs();
+        sauvegarderPartieEnCours();
     }
 });
 
-// --- INITIALISATION ---
-couleurJoueurInput.value = genererCouleurAleatoire();
+// =============================================================
+// 8. FIN DE PARTIE & STATS
+// =============================================================
+arreterMaintenantBouton.addEventListener('click', terminerPartie);
 
-/* =================================================================
---- SECTION AUTHENTIFICATION ET SAUVEGARDE ---
-=================================================================
-*/
-
-const auth = firebase.auth(); 
-const authErreur = document.getElementById('auth-erreur');
-const signupBtn = document.getElementById('auth-signup');
-const loginBtn = document.getElementById('auth-login');
-const sauvegarderBtn = document.getElementById('sauvegarder-partie');
-const saveFeedback = document.getElementById('save-feedback');
-let partieIdActuelle = null; 
-let currentUser = null;
-
-function afficherAuthErreur(message) { authErreur.textContent = message; authErreur.classList.remove('cache'); }
-
-signupBtn.addEventListener('click', () => { 
-    const email = document.getElementById('auth-email').value; 
-    const password = document.getElementById('auth-password').value; 
-    auth.createUserWithEmailAndPassword(email, password)
-        .then((userCredential) => {
-            creerProfilPublic(userCredential.user);
-        })
-        .catch(err => { afficherAuthErreur(err.message); }); 
-});
-
-function creerProfilPublic(user) {
-    db.collection('users_public').doc(user.uid).set({
-        email: user.email,
-        uid: user.uid
-    }).then(() => {
-        console.log("Profil public créé");
-    }).catch(err => console.error("Erreur profil public", err));
-}
-
-loginBtn.addEventListener('click', () => { const email = document.getElementById('auth-email').value; const password = document.getElementById('auth-password').value; auth.signInWithEmailAndPassword(email, password) .catch(err => { afficherAuthErreur(err.message); }); });
-logoutBtn.addEventListener('click', () => { auth.signOut(); });
-
-auth.onAuthStateChanged(user => {
-    if (user) {
-        currentUser = user;
-        userEmailNav.textContent = user.email;
-        authEcran.classList.add('cache');
-        appLayout.classList.remove('cache'); 
-        
-        creerProfilPublic(user);
-
-        chargerListeParties();
-        chargerHistoriqueParties();
-        chargerCategoriesConnues();
-        chargerJoueursRecents();
-        chargerAmis(); 
-        
-        showPage('page-new-game'); 
-    } else {
-        currentUser = null;
-        authEcran.classList.remove('cache');
-        appLayout.classList.add('cache');
-    }
-});
-
-// --- GESTION DES AMIS (MODIFIÉ POUR ÉDITION ET UPDATE HISTORIQUE) ---
-
-btnAddFriend.addEventListener('click', () => {
-    const email = friendEmailInput.value.trim();
-    const nickname = document.getElementById('friend-nickname-input').value.trim();
-    const color = document.getElementById('friend-color-input').value;
-
-    if (email) ajouterAmi(email, nickname, color);
-});
-
-function ajouterAmi(email, nickname, color) {
-    friendAddMsg.classList.remove('cache');
-    friendAddMsg.textContent = "Recherche...";
-    friendAddMsg.style.color = "blue";
-
-    db.collection('users_public').where('email', '==', email).get()
-    .then(snapshot => {
-        if (snapshot.empty) {
-            friendAddMsg.textContent = "Aucun utilisateur trouvé avec cet email.";
-            friendAddMsg.style.color = "red";
-            return;
-        }
-        
-        const amiDoc = snapshot.docs[0].data();
-        const amiUid = amiDoc.uid;
-        const amiEmail = amiDoc.email;
-
-        // Valeurs par défaut si non fournies
-        const finalNickname = nickname || amiEmail.split('@')[0];
-        const finalColor = color || genererCouleurAleatoire();
-
-        db.collection('utilisateurs').doc(currentUser.uid).collection('amis').doc(amiUid).set({
-            email: amiEmail,
-            uid: amiUid,
-            surnom: finalNickname,
-            couleur: finalColor,
-            dateAjout: new Date().toISOString()
-        }).then(() => {
-            friendAddMsg.textContent = "Ami ajouté !";
-            friendAddMsg.style.color = "green";
-            friendEmailInput.value = "";
-            document.getElementById('friend-nickname-input').value = ""; // Reset
-            chargerAmis();
-        });
-    })
-    .catch(err => {
-        console.error("Erreur ajout ami", err);
-        friendAddMsg.textContent = "Erreur lors de l'ajout.";
-        friendAddMsg.style.color = "red";
-    });
-}
-
-// *** MODIFIÉE : MET A JOUR L'HISTORIQUE ***
-async function sauvegarderAmi(uid, nouveauSurnom, nouvelleCouleur, ancienNom) {
-    if (!currentUser) return;
+async function terminerPartie() { 
+    sequenceForceStop = false; 
+    validerTourBouton.disabled = true; 
+    arreterMaintenantBouton.disabled = true; 
     
-    // 1. Mise à jour de la liste d'amis
-    await db.collection('utilisateurs').doc(currentUser.uid).collection('amis').doc(uid).update({
-        surnom: nouveauSurnom,
-        couleur: nouvelleCouleur
-    });
+    let joueursTries = [...joueurs].sort((a, b) => lowScoreWins ? a.scoreTotal - b.scoreTotal : b.scoreTotal - a.scoreTotal); 
+    classementFinal = calculerRangs(joueursTries); 
     
-    console.log("Ami mis à jour. Début mise à jour historique...");
-
-    // 2. Mise à jour RÉTROACTIVE de l'historique
-    const historyRef = db.collection('utilisateurs').doc(currentUser.uid).collection('historique');
-    const snapshot = await historyRef.get();
-
-    snapshot.forEach(doc => {
-        let data = doc.data();
-        let modified = false;
-
-        // Mise à jour dans joueursComplets
-        if (data.joueursComplets) {
-            data.joueursComplets = data.joueursComplets.map(j => {
-                // On vérifie par UID (si présent) ou par l'ancien nom (si pas d'UID)
-                if (j.uid === uid || (!j.uid && j.nom === ancienNom)) {
-                    j.nom = nouveauSurnom;
-                    j.couleur = nouvelleCouleur;
-                    // On ajoute l'UID s'il manquait
-                    if (!j.uid) j.uid = uid; 
-                    modified = true;
-                }
-                return j;
-            });
-        }
-
-        // Mise à jour dans le classement (pour l'affichage)
-        if (data.classement) {
-            data.classement = data.classement.map(j => {
-                if (j.uid === uid || (!j.uid && j.nom === ancienNom)) {
-                    j.nom = nouveauSurnom;
-                    j.couleur = nouvelleCouleur;
-                    if (!j.uid) j.uid = uid;
-                    modified = true;
-                }
-                return j;
-            });
-        }
-
-        if (modified) {
-            historyRef.doc(doc.id).update({
-                joueursComplets: data.joueursComplets,
-                classement: data.classement
-            }).then(() => console.log(`Partie ${doc.id} mise à jour.`));
-        }
-    });
-
-    chargerAmis(); 
-    chargerHistoriqueParties(); // Rafraichir l'historique
-}
-
-function supprimerAmi(uid) {
-    if (!currentUser) return;
-    if(confirm("Voulez-vous vraiment supprimer cet ami ?")) {
-        db.collection('utilisateurs').doc(currentUser.uid).collection('amis').doc(uid).delete()
-        .then(() => {
-            console.log("Ami supprimé");
-            chargerAmis();
-        })
-        .catch(err => console.error("Erreur suppression ami", err));
-    }
-}
-
-function chargerAmis() {
-    if (!currentUser) return;
-    db.collection('utilisateurs').doc(currentUser.uid).collection('amis').get()
-    .then(snapshot => {
-        mesAmis = [];
-        friendsListContainer.innerHTML = "";
-        selectAmiAjout.innerHTML = '<option value="">-- Choisir un ami --</option>';
-
-        if (snapshot.empty) {
-            friendsListContainer.innerHTML = "<p>Vous n'avez pas encore d'amis.</p>";
-            return;
-        }
-
-        snapshot.forEach(doc => {
-            const ami = doc.data();
-            mesAmis.push(ami);
-
-            const pseudo = ami.surnom || ami.email.split('@')[0];
-            const couleur = ami.couleur || "#CCCCCC";
-
-            const div = document.createElement('div');
-            div.className = 'friend-item';
-            div.dataset.uid = ami.uid; 
-
-            const viewDiv = document.createElement('div');
-            viewDiv.className = 'friend-view';
-            viewDiv.innerHTML = `
-                <div class="friend-info">
-                    <span class="friend-color-swatch" style="background-color: ${couleur};"></span>
-                    <span>${pseudo}</span> 
-                    <span class="friend-email">(${ami.email})</span>
-                </div>
-                <div class="friend-actions">
-                    <button class="btn-icon btn-edit-friend"><i class="fa-solid fa-pencil"></i></button>
-                    <button class="btn-icon btn-delete-friend"><i class="fa-solid fa-trash"></i></button>
-                </div>
-            `;
-
-            const editDiv = document.createElement('div');
-            editDiv.className = 'friend-edit-form';
-            editDiv.innerHTML = `
-                <input type="text" class="edit-surnom" value="${pseudo}" placeholder="Surnom">
-                <input type="color" class="edit-couleur" value="${couleur}">
-                <button class="btn-save-friend"><i class="fa-solid fa-check"></i></button>
-                <button class="btn-cancel-friend"><i class="fa-solid fa-times"></i></button>
-            `;
-
-            div.appendChild(viewDiv);
-            div.appendChild(editDiv);
-            friendsListContainer.appendChild(div);
-
-            const btnEdit = viewDiv.querySelector('.btn-edit-friend');
-            const btnDelete = viewDiv.querySelector('.btn-delete-friend');
-            const btnSave = editDiv.querySelector('.btn-save-friend');
-            const btnCancel = editDiv.querySelector('.btn-cancel-friend');
-
-            btnEdit.addEventListener('click', () => {
-                viewDiv.style.display = 'none';
-                editDiv.style.display = 'flex';
-                editDiv.classList.add('active');
-            });
-            
-            btnDelete.addEventListener('click', () => {
-                supprimerAmi(ami.uid);
-            });
-
-            btnCancel.addEventListener('click', () => {
-                editDiv.style.display = 'none';
-                editDiv.classList.remove('active');
-                viewDiv.style.display = 'flex';
-                editDiv.querySelector('.edit-surnom').value = pseudo;
-                editDiv.querySelector('.edit-couleur').value = couleur;
-            });
-
-            btnSave.addEventListener('click', () => {
-                const newName = editDiv.querySelector('.edit-surnom').value;
-                const newColor = editDiv.querySelector('.edit-couleur').value;
-                // On passe 'pseudo' comme ancien nom pour la recherche historique
-                sauvegarderAmi(ami.uid, newName, newColor, pseudo);
-            });
-
-            const option = document.createElement('option');
-            option.value = ami.uid; 
-            option.text = pseudo; 
-            option.dataset.couleur = couleur;  
-            selectAmiAjout.appendChild(option);
-        });
-    });
-}
-
-
-// --- SAUVEGARDE ET HISTORIQUE ---
-
-sauvegarderBtn.addEventListener('click', () => {
-    sauvegarderPartieEnCours();
-});
-
-async function sauvegarderPartieEnCours(isNew = false) {
-    if (!currentUser) return;
+    await sauvegarderHistoriquePartie(classementFinal); 
     
-    if (validerTourBouton.disabled && !isNew) return;
-
-    const etatPartie = { 
-        joueurs: joueurs, 
-        mancheActuelle: mancheActuelle, 
-        scoresSecrets: scoresSecrets, 
-        lowScoreWins: lowScoreWins, 
-        conditionsArret: conditionsArret, 
-        dernierSauvegarde: new Date().toISOString() 
-    }; 
+    const graphContainer = document.querySelector('.graphique-container'); 
+    if (graphContainer) graphContainer.classList.remove('cache'); 
     
-    const userRef = db.collection('utilisateurs').doc(currentUser.uid); 
-    const partiesRef = userRef.collection('parties'); 
-    
-    sauvegarderBtn.disabled = true; 
-    saveFeedback.textContent = "Sauvegarde auto..."; 
-    saveFeedback.classList.remove('cache'); 
-    
-    try { 
-        if (partieIdActuelle) { 
-            await partiesRef.doc(partieIdActuelle).set(etatPartie, { merge: true }); 
-        } else { 
-            const docRef = await partiesRef.add(etatPartie); 
-            partieIdActuelle = docRef.id; 
-        } 
-        saveFeedback.textContent = "Partie sauvegardée !"; 
-        setTimeout(() => saveFeedback.textContent = "", 2000); 
-        chargerListeParties(); 
-    } catch (err) { 
-        console.error("Erreur de sauvegarde: ", err); 
-        saveFeedback.textContent = "Erreur de sauvegarde."; 
-    } finally { 
-        sauvegarderBtn.disabled = false; 
-    }
-}
-
-function chargerListeParties() { if (!currentUser) return; const userRef = db.collection('utilisateurs').doc(currentUser.uid); listePartiesSauvegardees.innerHTML = "Chargement..."; userRef.collection('parties').orderBy('dernierSauvegarde', 'desc').get() .then(querySnapshot => { if (querySnapshot.empty) { listePartiesSauvegardees.innerHTML = "<p>Aucune partie en cours.</p>"; return; } listePartiesSauvegardees.innerHTML = ""; querySnapshot.forEach(doc => { const partie = doc.data(); const nomsJoueurs = partie.joueurs.map(j => j.nom).join(', '); const div = document.createElement('div'); div.innerHTML = ` <div class="partie-historique"> <div class="header-info"> <span><strong>Manche ${partie.mancheActuelle}</strong> (${nomsJoueurs})</span> <div class="action-buttons"> <button class="charger-btn" data-id="${doc.id}" style="background-color: #28a745;">Charger</button> <button class="supprimer-btn" data-id="${doc.id}" style="background-color: #dc3545;">&times;</button> </div> </div> </div> `; listePartiesSauvegardees.appendChild(div); }); }) .catch(err => { console.error("Erreur chargement parties: ", err); listePartiesSauvegardees.innerHTML = "<p>Erreur lors du chargement.</p>"; }); }
-listePartiesSauvegardees.addEventListener('click', e => { const target = e.target; const id = target.dataset.id; if (!id || !currentUser) return; const partieRef = db.collection('utilisateurs').doc(currentUser.uid).collection('parties').doc(id); if (target.classList.contains('charger-btn')) { partieRef.get().then(doc => { if (doc.exists) { const etatPartie = doc.data(); partieIdActuelle = doc.id; joueurs = etatPartie.joueurs; mancheActuelle = etatPartie.mancheActuelle; scoresSecrets = etatPartie.scoresSecrets; lowScoreWins = etatPartie.lowScoreWins; conditionsArret = etatPartie.conditionsArret; showPage('page-score'); validerTourBouton.disabled = false; arreterMaintenantBouton.disabled = false; document.querySelectorAll('.condition-checkbox').forEach(cb => { const type = cb.dataset.type; if (conditionsArret[type]) { cb.checked = conditionsArret[type].active; const input = document.getElementById(inputIdMap[type]); if(input) { input.disabled = !cb.checked; if (type.includes('manche')) { if (type === 'manche_total') input.value = conditionsArret[type].mancheCible; } else { input.value = conditionsArret[type].valeur; } } } }); genererChampsSaisie(); mettreAJourScoresAffichage(); creerGraphique(); if (!scoresSecrets) { let scoreCumules = new Array(joueurs.length).fill(0); if (monGraphique.data.datasets.length !== joueurs.length) { creerGraphique(); } for (let i = 0; i < mancheActuelle; i++) { if(monGraphique.data.labels.length <= i + 1) { monGraphique.data.labels.push(`Manche ${i + 1}`); } joueurs.forEach((joueur, index) => { const scoreDeCeTour = (joueur.scoresTour && joueur.scoresTour[i]) ? joueur.scoresTour[i] : 0; scoreCumules[index] += scoreDeCeTour; if(monGraphique.data.datasets[index]) { monGraphique.data.datasets[index].data[i+1] = scoreCumules[index]; } }); } monGraphique.update(); } mettreAJourCompteurs(); } }); } else if (target.classList.contains('supprimer-btn')) { if (confirm("Voulez-vous vraiment supprimer cette sauvegarde ?")) { partieRef.delete().then(() => { chargerListeParties(); }); } } });
-
-async function sauvegarderHistoriquePartie(classement) { 
-    if (!currentUser) return; 
-    
-    const entreeHistorique = { 
-        date: new Date().toISOString(), 
-        nomJeu: nomJeuActuel, 
-        classement: classement, 
-        joueursComplets: joueurs, 
-        manches: mancheActuelle, 
-        lowScoreWins: lowScoreWins 
-    }; 
-
-    try { 
-        const userRef = db.collection('utilisateurs').doc(currentUser.uid); 
-        await userRef.collection('historique').add(entreeHistorique); 
-        console.log("Historique sauvegardé pour le créateur !"); 
-
-        for (const joueur of joueurs) {
-            if (joueur.uid && joueur.uid !== currentUser.uid) {
-                try {
-                    await db.collection('utilisateurs').doc(joueur.uid).collection('historique').add(entreeHistorique);
-                    console.log(`Historique partagé sauvegardé pour ${joueur.nom} (${joueur.uid})`);
-                } catch (friendErr) {
-                    console.error(`Impossible de sauvegarder pour l'ami ${joueur.nom}:`, friendErr);
-                }
-            }
-        }
-
-        if (!categoriesJeuxConnues.includes(nomJeuActuel)) { 
-            categoriesJeuxConnues.push(nomJeuActuel); 
-            mettreAJourDatalistJeux(); 
-        } 
-        chargerHistoriqueParties(); 
-        if (partieIdActuelle) { 
-            const partieEnCoursRef = userRef.collection('parties').doc(partieIdActuelle); 
-            await partieEnCoursRef.delete(); 
-            partieIdActuelle = null; 
-            console.log("Partie 'en cours' supprimée et transférée à l'historique."); 
-            chargerListeParties(); 
-        } 
-    } catch (err) { 
-        console.error("Erreur sauvegarde historique: ", err); 
+    if (scoresSecrets) { 
+        scoresSecrets = false; 
+        mettreAJourScoresAffichage(); 
+        alert("Scores révélés !"); 
+        setTimeout(demarrerSequenceReveal, 100); 
+    } else { 
+        mettreAJourScoresAffichage(); 
+        demarrerSequenceReveal(); 
     } 
 }
 
-// ... (Le reste du code JS : chargerHistoriqueParties, stats, graphiques, etc. reste inchangé) ...
-async function chargerHistoriqueParties() {
-    if (!currentUser) return;
-    const userRef = db.collection('utilisateurs').doc(currentUser.uid);
-    historyGridJeux.innerHTML = "Chargement...";
-    try {
-        const querySnapshot = await userRef.collection('historique').orderBy('date', 'desc').get();
-        allHistoryData = []; 
-        querySnapshot.forEach(doc => {
-            let data = doc.data();
-            data.id = doc.id;
-            allHistoryData.push(data);
-        });
-        
-        if (allHistoryData.length === 0) {
-            historyGridJeux.innerHTML = "<p>Aucun historique de partie.</p>";
-            return;
-        }
-
-        const partiesParJeu = {};
-        allHistoryData.forEach(partie => {
-            const nomJeu = partie.nomJeu || "Parties";
-            if (!partiesParJeu[nomJeu]) {
-                partiesParJeu[nomJeu] = 0;
+async function sauvegarderHistoriquePartie(classement) { 
+    if (!currentUser) return; 
+    const entreeHistorique = { date: new Date().toISOString(), nomJeu: nomJeuActuel, classement: classement, joueursComplets: joueurs, manches: mancheActuelle, lowScoreWins: lowScoreWins }; 
+    const userRef = db.collection('utilisateurs').doc(currentUser.uid); 
+    
+    try { 
+        await userRef.collection('historique').add(entreeHistorique); 
+        for (const joueur of joueurs) {
+            if (joueur.uid && joueur.uid !== currentUser.uid) {
+                try { await db.collection('utilisateurs').doc(joueur.uid).collection('historique').add(entreeHistorique); } catch(e){}
             }
-            partiesParJeu[nomJeu]++;
-        });
-
-        historyGridJeux.innerHTML = "";
-        const nomsJeuxTries = Object.keys(partiesParJeu).sort((a, b) => a.localeCompare(b));
-        
-        nomsJeuxTries.forEach(nomJeu => {
-            const nbParties = partiesParJeu[nomJeu];
-            const div = document.createElement('div');
-            div.className = 'history-game-square';
-            div.dataset.nomJeu = nomJeu;
-            div.innerHTML = `
-                ${nomJeu}
-                <span>${nbParties} partie${nbParties > 1 ? 's' : ''}</span>
-            `;
-            historyGridJeux.appendChild(div);
-        });
-
-        afficherStatsGlobales();
-
-    } catch (err) {
-        console.error("Erreur chargement historique: ", err);
-        historyGridJeux.innerHTML = "<p>Erreur lors du chargement.</p>";
-    }
+        }
+        if (partieIdActuelle) { 
+            await userRef.collection('parties').doc(partieIdActuelle).delete(); 
+            partieIdActuelle = null; 
+            chargerListeParties(); 
+        } 
+        if (!categoriesJeuxConnues.includes(nomJeuActuel)) { categoriesJeuxConnues.push(nomJeuActuel); mettreAJourDatalistJeux(); } 
+        chargerHistoriqueParties(); 
+    } catch (err) { console.error("Erreur historique: ", err); } 
 }
 
 function afficherStatsGlobales() {
     if (allHistoryData.length === 0) return;
 
-    // 1. Calcul "Jeux les Plus Joués" (Fréquence)
-    const partiesParJeu = {};
-    allHistoryData.forEach(partie => {
-        const nomJeu = partie.nomJeu || "Parties";
-        partiesParJeu[nomJeu] = (partiesParJeu[nomJeu] || 0) + 1;
-    });
-    const jeuxFrequenceTries = Object.entries(partiesParJeu)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 3); 
-
-    statsJeuxFrequenceListe.innerHTML = "";
-    jeuxFrequenceTries.forEach(([nom, count]) => {
-        const li = document.createElement('li');
-        li.innerHTML = `${nom} <span>(${count} parties)</span>`;
-        statsJeuxFrequenceListe.appendChild(li);
-    });
-
-    // 2. Calcul "Top Joueurs" (Apparitions)
-    const compteJoueurs = {};
-    allHistoryData.forEach(partie => {
-        const joueursDeLaPartie = partie.joueursComplets || partie.classement;
-        joueursDeLaPartie.forEach(joueur => {
-            compteJoueurs[joueur.nom] = (compteJoueurs[joueur.nom] || 0) + 1;
-        });
-    });
-    const joueursTries = Object.entries(compteJoueurs)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 3);
-
-    statsJoueursPodiumListe.innerHTML = "";
-    joueursTries.forEach(([nom, count]) => {
-        const li = document.createElement('li');
-        li.innerHTML = `${nom} <span>(${count} apparitions)</span>`;
-        statsJoueursPodiumListe.appendChild(li);
-    });
-
-    // 3. Calcul "Top Jeux" (Performance / % Position Moyen)
+    // 1. Top Jeux (Perf)
     const statsPerfJeu = {}; 
-
     allHistoryData.forEach(partie => {
         const nomJeu = partie.nomJeu || "Parties";
         const totalJoueurs = partie.classement.length;
         if (totalJoueurs <= 1) return;
 
-        if (!statsPerfJeu[nomJeu]) {
-            statsPerfJeu[nomJeu] = { totalPctSum: 0, gameCount: 0 };
+        if (!statsPerfJeu[nomJeu]) { statsPerfJeu[nomJeu] = { totalPctSum: 0, gameCount: 0 }; }
+
+        let joueurConnecte = partie.classement.find(j => j.uid === currentUser.uid);
+        if (!joueurConnecte && monProfilLocal.nom) {
+            joueurConnecte = partie.classement.find(j => j.nom === monProfilLocal.nom);
         }
 
-        // Calcul corrigé pour le joueur connecté
-        const joueurConnecte = partie.classement.find(j => j.uid === currentUser.uid);
         if (joueurConnecte) {
             const rang = joueurConnecte.rang;
             const positionPct = (totalJoueurs - rang) / (totalJoueurs - 1);
@@ -794,303 +657,127 @@ function afficherStatsGlobales() {
     });
 
     const jeuxPerfTries = Object.entries(statsPerfJeu)
-        .map(([nom, data]) => ({
-            nom: nom,
-            avg: (data.totalPctSum / data.gameCount) * 100
-        }))
+        .map(([nom, data]) => ({ nom: nom, avg: (data.totalPctSum / data.gameCount) * 100 }))
         .filter(jeu => !isNaN(jeu.avg))
         .sort((a, b) => b.avg - a.avg)
         .slice(0, 3);
 
     statsTopJeuxListe.innerHTML = "";
+    if (jeuxPerfTries.length === 0) statsTopJeuxListe.innerHTML = "<li>Pas assez de données</li>";
     jeuxPerfTries.forEach(jeu => {
         const li = document.createElement('li');
-        li.innerHTML = `${jeu.nom} <span>(${jeu.avg.toFixed(1)}% perf.)</span>`;
+        li.innerHTML = `${jeu.nom} <span>(${jeu.avg.toFixed(0)}% perf.)</span>`;
         statsTopJeuxListe.appendChild(li);
     });
+
+    // 2. Fréquence
+    const partiesParJeu = {};
+    allHistoryData.forEach(p => { const n = p.nomJeu || "Parties"; partiesParJeu[n] = (partiesParJeu[n]||0)+1; });
+    const freqTries = Object.entries(partiesParJeu).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    statsJeuxFrequenceListe.innerHTML = freqTries.map(([n,c]) => `<li>${n} <span>(${c})</span></li>`).join('');
+
+    // 3. Top Joueurs
+    const compteJoueurs = {};
+    allHistoryData.forEach(p => { (p.joueursComplets || p.classement).forEach(j => { compteJoueurs[j.nom] = (compteJoueurs[j.nom]||0)+1; }); });
+    const joueursTries = Object.entries(compteJoueurs).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    statsJoueursPodiumListe.innerHTML = joueursTries.map(([n,c]) => `<li>${n} <span>(${c})</span></li>`).join('');
 }
 
-
-function afficherDetailsHistoriqueJeu(nomJeu) {
-    historyDetailsTitle.textContent = `Historique pour : ${nomJeu}`;
-    listeHistoriquePartiesDetails.innerHTML = '';
-    joueursSurGraphique = [];
-    mettreAJourTagsGraphique(); 
-
-    const partiesDeCeJeu = allHistoryData
-        .filter(partie => (partie.nomJeu || "Parties") === nomJeu)
-        .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    const joueursUniques = new Set();
-    const comptePartiesJoueur = {};
-    partiesDeCeJeu.forEach(partie => {
-        partie.classement.forEach(joueur => {
-            joueursUniques.add(joueur.nom);
-            comptePartiesJoueur[joueur.nom] = (comptePartiesJoueur[joueur.nom] || 0) + 1;
-        });
-    });
-
-    historyPlayerSelect.innerHTML = '';
-    joueursUniques.forEach(nom => {
-        const option = document.createElement('option');
-        option.value = nom;
-        option.textContent = `${nom} (${comptePartiesJoueur[nom]} p.)`;
-        historyPlayerSelect.appendChild(option);
-    });
-
-    const joueurParDefaut = Object.entries(comptePartiesJoueur)
-        .sort(([, a], [, b]) => b - a)[0];
-
-    if (joueurParDefaut) {
-        const nomJoueurDefaut = joueurParDefaut[0];
-        historyPlayerSelect.value = nomJoueurDefaut;
-        joueursSurGraphique.push(nomJoueurDefaut);
-        mettreAJourTagsGraphique();
-        redessinerGraphiquePosition(partiesDeCeJeu);
-    } else {
-        if (monGraphiquePosition) {
-            monGraphiquePosition.destroy();
-            monGraphiquePosition = null;
+// --- AMIS : MISE A JOUR DROPDOWN (AJOUT PROFIL PERSO) ---
+function chargerAmis() { 
+    if (!currentUser) return; 
+    db.collection('utilisateurs').doc(currentUser.uid).collection('amis').get().then(snapshot => { 
+        mesAmis = []; 
+        friendsListContainer.innerHTML = ""; 
+        // MODIFIÉ : Option par défaut
+        selectAmiAjout.innerHTML = '<option value="">-- Choisir un profil --</option>'; 
+        
+        // 1. AJOUTER "MOI" EN PREMIER
+        if (monProfilLocal.nom) {
+            const optMe = document.createElement('option');
+            optMe.value = currentUser.uid;
+            optMe.text = `👤 Moi (${monProfilLocal.nom})`; // Visuel clair
+            optMe.dataset.couleur = monProfilLocal.couleur;
+            selectAmiAjout.appendChild(optMe);
         }
-    }
 
-    partiesDeCeJeu.forEach(partie => {
-        const datePartie = new Date(partie.date);
-        const dateStr = datePartie.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        const timeStr = datePartie.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        const dateTimeStr = `${dateStr} à ${timeStr}`;
-
-        const podium1 = partie.classement.filter(j => j.rang === 1).map(j => `<span><span class="podium-medaille-small">🥇</span> ${j.nom} (${j.scoreTotal} pts)</span>`).join(' ');
-        const podium2 = partie.classement.filter(j => j.rang === 2).map(j => `<span><span class="podium-medaille-small">🥈</span> ${j.nom} (${j.scoreTotal} pts)</span>`).join(' ');
-        const podium3 = partie.classement.filter(j => j.rang === 3).map(j => `<span><span class="podium-medaille-small">🥉</span> ${j.nom} (${j.scoreTotal} pts)</span>`).join(' ');
-
-        const div = document.createElement('div');
-        div.className = 'partie-historique';
-        div.innerHTML = `
-            <div class="header-info">
-                <span class="time-date">${dateTimeStr}</span>
-                <div class="action-buttons">
-                    <button class="voir-hist-btn" data-id="${partie.id}" title="Voir le podium">Voir</button>
-                    <button class="supprimer-hist-btn" data-id="${partie.id}" title="Supprimer de l'historique">&times;</button>
-                </div>
-            </div>
-            <div class="podium-mini">
-                ${podium1} ${podium2} ${podium3}
-            </div>
-        `;
-        listeHistoriquePartiesDetails.appendChild(div);
-    });
-    
-    showPage('page-history-details');
+        if (snapshot.empty) { friendsListContainer.innerHTML = "<p>Pas d'amis.</p>"; return; } 
+        
+        // 2. AJOUTER LES AMIS
+        snapshot.forEach(doc => { 
+            const ami = doc.data(); 
+            mesAmis.push(ami); 
+            const pseudo = ami.surnom || ami.email; 
+            const couleur = ami.couleur || "#CCCCCC"; 
+            const div = document.createElement('div'); 
+            div.className = 'friend-item'; 
+            div.innerHTML = ` 
+                <div class="friend-view"> 
+                    <div class="friend-info"> <span class="friend-color-swatch" style="background-color: ${couleur};"></span> <span>${pseudo}</span> <span class="friend-email">(${ami.email})</span> </div> 
+                    <div class="friend-actions"> <button class="btn-icon btn-edit-friend"><i class="fa-solid fa-pencil"></i></button> <button class="btn-icon btn-delete-friend"><i class="fa-solid fa-trash"></i></button> </div> 
+                </div> 
+                <div class="friend-edit-form"> <input type="text" class="edit-surnom" value="${pseudo}"> <input type="color" class="edit-couleur" value="${couleur}"> <button class="btn-save-friend"><i class="fa-solid fa-check"></i></button> <button class="btn-cancel-friend"><i class="fa-solid fa-times"></i></button> </div> 
+            `; 
+            friendsListContainer.appendChild(div); 
+            const viewDiv = div.querySelector('.friend-view'); const editDiv = div.querySelector('.friend-edit-form'); 
+            viewDiv.querySelector('.btn-edit-friend').onclick = () => { viewDiv.style.display = 'none'; editDiv.style.display = 'flex'; }; 
+            viewDiv.querySelector('.btn-delete-friend').onclick = () => supprimerAmi(ami.uid); 
+            editDiv.querySelector('.btn-cancel-friend').onclick = () => { editDiv.style.display = 'none'; viewDiv.style.display = 'flex'; }; 
+            editDiv.querySelector('.btn-save-friend').onclick = () => { sauvegarderAmi(ami.uid, editDiv.querySelector('.edit-surnom').value, editDiv.querySelector('.edit-couleur').value, pseudo); }; 
+            
+            const opt = document.createElement('option'); 
+            opt.value = ami.uid; opt.text = pseudo; opt.dataset.couleur = couleur; 
+            selectAmiAjout.appendChild(opt); 
+        }); 
+    }); 
 }
 
-function mettreAJourTagsGraphique() {
-    if (!graphPlayersList) return;
-    graphPlayersList.innerHTML = ''; 
-
-    joueursSurGraphique.forEach(nom => {
-        const tag = document.createElement('span');
-        tag.className = 'graph-player-tag';
-        
-        const nomSpan = document.createElement('span');
-        nomSpan.textContent = nom;
-        
-        const retirerBtn = document.createElement('button');
-        retirerBtn.className = 'bouton-retirer';
-        retirerBtn.innerHTML = '&times;';
-        retirerBtn.dataset.nom = nom;
-        retirerBtn.title = `Retirer ${nom} du graphique`;
-
-        retirerBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const nomARetirer = retirerBtn.dataset.nom;
-            joueursSurGraphique = joueursSurGraphique.filter(j => j !== nomARetirer);
-            
-            mettreAJourTagsGraphique();
-            
-            const nomJeu = historyDetailsTitle.textContent.replace('Historique pour : ', '');
-            const partiesDeCeJeu = allHistoryData
-                .filter(partie => (partie.nomJeu || "Parties") === nomJeu);
-            redessinerGraphiquePosition(partiesDeCeJeu);
-        });
-
-        tag.appendChild(nomSpan);
-        tag.appendChild(retirerBtn);
-        graphPlayersList.appendChild(tag);
-    });
-}
-
-
-function redessinerGraphiquePosition(parties) {
-    if (monGraphiquePosition) {
-        monGraphiquePosition.destroy();
+// --- RESTE (Helpers, Reveal, Graphiques) ---
+function genererChampsSaisie() { saisiePointsDiv.innerHTML = ''; joueurs.forEach((joueur, index) => { const div = document.createElement('div'); div.className = 'saisie-item'; div.innerHTML = ` <label for="score-${index}"> <span class="score-couleur-swatch" style="background-color: ${joueur.couleur};"></span> ${joueur.nom} : </label> <input type="number" id="score-${index}" value="0"> `; saisiePointsDiv.appendChild(div); }); }
+function mettreAJourScoresAffichage() { scoreAffichageDiv.innerHTML = ''; let listePourAffichage = []; if (!scoresSecrets) { let joueursTries = [...joueurs].sort((a, b) => { return lowScoreWins ? a.scoreTotal - b.scoreTotal : b.scoreTotal - a.scoreTotal; }); listePourAffichage = calculerRangs(joueursTries); } else { listePourAffichage = joueurs; } let html = '<table class="classement-table">'; html += '<thead><tr><th>#</th><th>Joueur</th><th>Total</th></tr></thead>'; html += '<tbody>'; listePourAffichage.forEach((joueur) => { const rangAffichage = joueur.rang && !scoresSecrets ? joueur.rang : '-'; html += ` <tr> <td>${rangAffichage}</td> <td> <span class="score-couleur-swatch" style="background-color: ${joueur.couleur};"></span> ${joueur.nom} </td> <td class="score-total">${scoresSecrets ? '???' : `${joueur.scoreTotal} pts`}</td> </tr> `; }); html += '</tbody></table>'; scoreAffichageDiv.innerHTML = html; }
+function mettreAJourCompteurs() { manchesPasseesAffichage.textContent = mancheActuelle; let restantesManches = Infinity; let afficherManchesRestantes = false; if (conditionsArret.manche_total.active) { const totalManches = conditionsArret.manche_total.mancheCible; restantesManches = Math.max(0, totalManches - mancheActuelle); afficherManchesRestantes = true; } if (conditionsArret.manche_restante.active) { const mancheCible = conditionsArret.manche_restante.mancheCible; const restantesDynamiques = Math.max(0, mancheCible - mancheActuelle); restantesManches = Math.min(restantesManches, restantesDynamiques); afficherManchesRestantes = true; } if (afficherManchesRestantes) { manchesRestantesAffichage.textContent = restantesManches; manchesRestantesAffichageDiv.classList.remove('cache'); } else { manchesRestantesAffichageDiv.classList.add('cache'); } let pointsMinRestants = Infinity; let afficherPointsRestants = false; if (conditionsArret.score_limite.active) { const scoreMax = Math.max(...joueurs.map(j => j.scoreTotal)); const restantsAbsolu = Math.max(0, conditionsArret.score_limite.valeur - scoreMax); pointsMinRestants = Math.min(pointsMinRestants, restantsAbsolu); afficherPointsRestants = true; } if (conditionsArret.score_relatif.active) { joueurs.forEach(joueur => { let limiteCible = (joueur.scoreRelatifPivot || 0) + conditionsArret.score_relatif.valeur; const restantsRelatif = Math.max(0, limiteCible - joueur.scoreTotal); pointsMinRestants = Math.min(pointsMinRestants, restantsRelatif); }); afficherPointsRestants = true; } if (afficherPointsRestants) { pointsRestantsAffichage.textContent = pointsMinRestants; pointsRestantsAffichageDiv.classList.remove('cache'); } else { pointsRestantsAffichageDiv.classList.add('cache'); } }
+function verifierConditionsArret() { if (validerTourBouton.disabled) return; let doitTerminer = false; if (conditionsArret.score_limite.active && conditionsArret.score_limite.valeur > 0) { if (joueurs.some(j => j.scoreTotal >= conditionsArret.score_limite.valeur)) { doitTerminer = true; } } if (conditionsArret.score_relatif.active && conditionsArret.score_relatif.valeur > 0) { joueurs.forEach(joueur => { let limiteCible = (joueur.scoreRelatifPivot || 0) + conditionsArret.score_relatif.valeur; if (joueur.scoreTotal >= limiteCible) { doitTerminer = true; } }); } if (conditionsArret.manche_total.active && mancheActuelle >= conditionsArret.manche_total.mancheCible && conditionsArret.manche_total.mancheCible > 0) { doitTerminer = true; } if (conditionsArret.manche_restante.active && mancheActuelle >= conditionsArret.manche_restante.mancheCible && conditionsArret.manche_restante.mancheCible > 0) { doitTerminer = true; } if (doitTerminer) { terminerPartie(); } }
+function construirePodiumFinal() { currentStepSkipper = null; const podiumMap = { 1: document.getElementById('podium-1'), 2: document.getElementById('podium-2'), 3: document.getElementById('podium-3') }; Object.values(podiumMap).forEach(el => el.classList.remove('cache')); const premier = classementFinal.filter(j => j.rang === 1); const deuxieme = classementFinal.filter(j => j.rang === 2); const troisieme = classementFinal.filter(j => j.rang === 3); const remplirPlace = (element, joueursPlace) => { if (joueursPlace.length > 0) { const joueurRef = joueursPlace[0]; const noms = joueursPlace.map(j => j.nom).join(' & '); element.querySelector('.podium-nom').textContent = noms; element.querySelector('.podium-score').textContent = `${joueurRef.scoreTotal} pts`; element.style.borderColor = joueurRef.couleur; element.style.boxShadow = `0 0 15px ${joueurRef.couleur}80`; } else { element.classList.add('cache'); } }; remplirPlace(podiumMap[1], premier); remplirPlace(podiumMap[2], deuxieme); remplirPlace(podiumMap[3], troisieme); const autresListe = document.getElementById('autres-joueurs-liste'); autresListe.innerHTML = ''; const autresJoueurs = classementFinal.filter(j => j.rang > 3); if(autresJoueurs.length === 0) { document.getElementById('autres-joueurs').classList.add('cache'); } else { document.getElementById('autres-joueurs').classList.remove('cache'); autresJoueurs.sort((a, b) => a.rang - b.rang); autresJoueurs.forEach((joueur) => { const li = document.createElement('li'); li.innerHTML = ` <span class="score-couleur-swatch" style="background-color: ${joueur.couleur};"></span> <strong>${joueur.rang}. ${joueur.nom}</strong> (${joueur.scoreTotal} pts) `; autresListe.appendChild(li); }); } const graphContainer = document.querySelector('.graphique-container'); const graphPlaceholder = document.getElementById('graphique-final-container'); if (graphContainer && graphPlaceholder) { graphPlaceholder.innerHTML = ''; graphPlaceholder.appendChild(graphContainer); if (monGraphique) { monGraphique.resize(); } } }
+function majContenuReveal(rang, joueur, estExAequoPrecedent) { let rangTexte = `${rang}ème Place`; if (estExAequoPrecedent) { rangTexte = `Ex æquo ${rang}ème Place`; } if (rang === 3) rangTexte = `🥉 ${estExAequoPrecedent ? 'Ex æquo ' : ''}3ème Place`; if (rang === 1) rangTexte = `🥇 GAGNANT ${estExAequoPrecedent ? 'Ex æquo ' : ''}!`; revealRang.textContent = rangTexte; revealNom.textContent = joueur.nom; revealNom.style.color = joueur.couleur; revealScore.textContent = `${joueur.scoreTotal} points`; revealContent.classList.remove('is-revealed'); }
+async function demarrerSequenceReveal() { showPage('page-score'); revealEcran.classList.remove('cache'); let joueursAReveler = []; joueursAReveler.push(...classementFinal.filter(j => j.rang > 2).reverse()); joueursAReveler.push(...classementFinal.filter(j => j.rang === 1)); let rangPrecedent = null; for (const joueur of joueursAReveler) { if (sequenceForceStop) return; const rang = joueur.rang; const estExAequo = (rang === rangPrecedent); majContenuReveal(rang, joueur, estExAequo); revealContent.classList.add('slide-in-from-left'); await attendreFinAnimation(revealContent); revealContent.classList.remove('slide-in-from-left'); if (sequenceForceStop) return; await pause(1500); if (sequenceForceStop) return; revealContent.classList.add('shake-reveal'); await attendreFinAnimation(revealContent); revealContent.classList.remove('shake-reveal'); revealContent.classList.add('is-revealed'); if (sequenceForceStop) return; await pause(2500); if (sequenceForceStop) return; if (joueur !== joueursAReveler[joueursAReveler.length - 1]) { revealContent.classList.add('slide-out-to-right'); await attendreFinAnimation(revealContent); revealContent.classList.remove('slide-out-to-right', 'is-revealed'); } rangPrecedent = rang; } revealEcran.classList.add('cache'); showPage('page-podium'); construirePodiumFinal(); }
+function creerGraphique() { if (monGraphique) { monGraphique.destroy(); } const datasets = joueurs.map((joueur, index) => ({ label: joueur.nom, data: [0], borderColor: joueur.couleur, backgroundColor: joueur.couleur + '33', fill: false, tension: 0.1 })); monGraphique = new Chart(canvasGraphique, { type: 'line', data: { labels: ['Manche 0'], datasets: datasets }, options: { responsive: true, plugins: { legend: { position: 'top' }, title: { display: false } }, scales: { y: { title: { display: true, text: 'Points' } }, x: { title: { display: true, text: 'Manches' } } } } }); }
+function mettreAJourGraphique() { if (!monGraphique) { return; } const labelManche = 'Manche ' + mancheActuelle; if (!monGraphique.data.labels.includes(labelManche)) { monGraphique.data.labels.push(labelManche); } joueurs.forEach((joueur, index) => { if(monGraphique.data.datasets[index]) { if (monGraphique.data.datasets[index].data.length <= mancheActuelle) { monGraphique.data.datasets[index].data.push(joueur.scoreTotal); } else { monGraphique.data.datasets[index].data[mancheActuelle] = joueur.scoreTotal; } } }); monGraphique.update(); }
+function recreerGraphiqueFinal() { const graphContainer = document.querySelector('.graphique-container'); const graphPlaceholder = document.getElementById('graphique-final-container'); if (graphContainer && graphPlaceholder) { if (!graphPlaceholder.contains(graphContainer)) { graphPlaceholder.innerHTML = ''; graphPlaceholder.appendChild(graphContainer); } } if (monGraphique) { monGraphique.destroy(); } const datasets = joueurs.map((joueur, index) => ({ label: joueur.nom, data: [0], borderColor: joueur.couleur, backgroundColor: joueur.couleur + '33', fill: false, tension: 0.1 })); monGraphique = new Chart(canvasGraphique, { type: 'line', data: { labels: ['Manche 0'], datasets: datasets }, options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { title: { display: true, text: 'Points' } }, x: { title: { display: true, text: 'Manches' } } } } }); let scoreCumules = new Array(joueurs.length).fill(0); for (let i = 0; i < mancheActuelle; i++) { if(monGraphique.data.labels.length <= i + 1) { monGraphique.data.labels.push(`Manche ${i + 1}`); } joueurs.forEach((joueur, index) => { const scoreDeCeTour = (joueur.scoresTour && joueur.scoresTour[i]) ? joueur.scoresTour[i] : 0; scoreCumules[index] += scoreDeCeTour; if(monGraphique.data.datasets[index]) { monGraphique.data.datasets[index].data[i+1] = scoreCumules[index]; } }); } monGraphique.update(); monGraphique.resize(); }
+function mettreAJourConditionsArret() { for (const key in conditionsArret) { conditionsArret[key].active = false; } document.querySelectorAll('.condition-checkbox:checked').forEach(checkbox => { const type = checkbox.dataset.type; conditionsArret[type].active = true; const inputId = inputIdMap[type]; const inputElement = document.getElementById(inputId); const valeur = parseInt(inputElement.value, 10) || 0; if (type === 'score_limite') { conditionsArret.score_limite.valeur = valeur; } else if (type === 'score_relatif') { conditionsArret[type].valeur = valeur; joueurs.forEach(j => { j.scoreRelatifPivot = j.scoreTotal; }); } else if (type === 'manche_total') { conditionsArret.manche_total.mancheCible = valeur; } else if (type === 'manche_restante') { conditionsArret.manche_restante.mancheCible = mancheActuelle + valeur; } }); }
+conditionCheckboxes.forEach(checkbox => { checkbox.addEventListener('change', (e) => { const type = e.target.dataset.type; const inputId = inputIdMap[type]; const input = document.getElementById(inputId); if (input) { input.disabled = !checkbox.checked; } mettreAJourConditionsArret(); mettreAJourCompteurs(); }); });
+[scoreLimiteInput, scoreRelatifInput, nbManchesTotalInput, nbManchesRestantesInput].forEach(input => { input.addEventListener('change', () => { mettreAJourConditionsArret(); mettreAJourCompteurs(); }); });
+nomJoueurInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { ajouterBouton.click(); } });
+revealEcran.addEventListener('click', (e) => { if (e.target.closest('#skip-all-btn') || e.target.closest('#reveal-content')) { return; } if (currentStepSkipper) { currentStepSkipper(); } });
+skipAllBtn.addEventListener('click', () => { sequenceForceStop = true; if (currentStepSkipper) { currentStepSkipper(); } revealEcran.classList.add('cache'); showPage('page-podium'); construirePodiumFinal(); });
+retourAccueilBtn.addEventListener('click', () => { 
+    showPage('page-ongoing-games'); 
+    const graphContainer = document.querySelector('.graphique-container'); 
+    const graphOriginalParent = document.getElementById('page-score').querySelector('.score-gauche'); 
+    const inputTourDiv = document.getElementById('page-score').querySelector('.input-tour'); 
+    if (graphContainer && graphOriginalParent && inputTourDiv) { 
+        graphOriginalParent.insertBefore(graphContainer, inputTourDiv); 
+        if (monGraphique) { monGraphique.destroy(); monGraphique = null; } 
     }
-
-    if (joueursSurGraphique.length === 0) {
-        return;
-    }
-
-    const partiesFiltrees = parties
-        .filter(partie => partie.classement.some(j => joueursSurGraphique.includes(j.nom)))
-        .sort((a, b) => new Date(a.date) - new Date(b.date)); 
-
-    if (partiesFiltrees.length === 0) return;
-
-    const labels = partiesFiltrees.map((partie, index) => `Partie ${index + 1}`);
-
-    const datasets = joueursSurGraphique.map((nomJoueur, index) => {
-        const dataPoints = [];
-        
-        partiesFiltrees.forEach(partie => {
-            const joueur = partie.classement.find(j => j.nom === nomJoueur);
-            
-            if (joueur) {
-                const rang = joueur.rang;
-                const totalJoueurs = partie.classement.length;
-                let positionPct = 0;
-
-                if (totalJoueurs > 1) {
-                    positionPct = ((totalJoueurs - rang) / (totalJoueurs - 1)) * 100;
-                } else if (totalJoueurs === 1) {
-                    positionPct = 100;
-                }
-                dataPoints.push(positionPct);
-            } else {
-                dataPoints.push(null);
-            }
-        });
-
-        const couleur = COULEURS_GRAPH[index % COULEURS_GRAPH.length];
-        return {
-            label: `Position de ${nomJoueur} (en %)`,
-            data: dataPoints,
-            borderColor: couleur,
-            backgroundColor: couleur + '33',
-            fill: false,
-            tension: 0.1,
-            spanGaps: true, 
-        };
-    });
-
-    monGraphiquePosition = new Chart(canvasGraphiquePosition, {
-        type: 'line',
-        data: { labels: labels, datasets: datasets },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { position: 'top' },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}%`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    title: { display: true, text: 'Pourcentage de Position' },
-                    min: 0,
-                    max: 100,
-                    ticks: { callback: value => value + '%' }
-                },
-                x: {
-                    title: { display: true, text: 'Parties (chronologique)' }
-                }
-            }
-        }
-    });
-}
-
-
-historyGridJeux.addEventListener('click', (e) => {
-    const square = e.target.closest('.history-game-square');
-    if (square && square.dataset.nomJeu) {
-        afficherDetailsHistoriqueJeu(square.dataset.nomJeu);
-    }
+    resetConfigurationPartie();
 });
-
-historyBackBtn.addEventListener('click', () => {
-    showPage('page-history-grid');
-    joueursSurGraphique = [];
-    mettreAJourTagsGraphique();
-    if (monGraphiquePosition) {
-        monGraphiquePosition.destroy();
-        monGraphiquePosition = null;
-    }
-});
-
-listeHistoriquePartiesDetails.addEventListener('click', async (e) => {
-    const target = e.target;
-    const id = target.dataset.id;
-    if (!id || !currentUser) return;
-    
-    if (target.classList.contains('supprimer-hist-btn')) {
-        const histRef = db.collection('utilisateurs').doc(currentUser.uid).collection('historique').doc(id);
-        if (confirm("Voulez-vous vraiment supprimer cette partie de l'historique ?")) {
-            try {
-                await histRef.delete();
-                await chargerHistoriqueParties(); 
-                const nomJeu = historyDetailsTitle.textContent.replace('Historique pour : ', '');
-                afficherDetailsHistoriqueJeu(nomJeu);
-            } catch (err) {
-                console.error("Erreur de suppression: ", err);
-                alert("Une erreur est survenue.");
-            }
-        }
-    }
-    
-    if (target.classList.contains('voir-hist-btn')) {
-        try {
-            const partieData = allHistoryData.find(p => p.id === id); 
-            if (partieData) {
-                classementFinal = partieData.classement;
-                joueurs = partieData.joueursComplets;
-                lowScoreWins = partieData.lowScoreWins;
-                mancheActuelle = partieData.manches;
-                showPage('page-podium');
-                construirePodiumFinal();
-                recreerGraphiqueFinal();
-            } else {
-                alert("Impossible de trouver cette partie.");
-            }
-        } catch (err) {
-            console.error("Erreur pour voir l'historique: ", err);
-            alert("Erreur lors du chargement de la partie.");
-        }
-    }
-});
-
-addPlayerToGraphBtn.addEventListener('click', () => {
-    const nomJoueur = historyPlayerSelect.value;
-    if (!nomJoueur) return;
-
-    if (!joueursSurGraphique.includes(nomJoueur)) {
-        joueursSurGraphique.push(nomJoueur);
-        
-        mettreAJourTagsGraphique();
-        
-        const nomJeu = historyDetailsTitle.textContent.replace('Historique pour : ', '');
-        const partiesDeCeJeu = allHistoryData
-            .filter(partie => (partie.nomJeu || "Parties") === nomJeu);
-            
-        redessinerGraphiquePosition(partiesDeCeJeu);
-    }
-});
-
-
-// --- 6. Fonctions pour les SUGGESTIONS ---
+function pause(ms) { return new Promise(resolve => { const timer = setTimeout(() => { currentStepSkipper = null; resolve(); }, ms); currentStepSkipper = () => { clearTimeout(timer); currentStepSkipper = null; resolve(); }; }); }
+function attendreFinAnimation(element) { return new Promise(resolve => { const onAnimEnd = () => { currentStepSkipper = null; resolve(); }; element.addEventListener('animationend', onAnimEnd, { once: true }); currentStepSkipper = () => { element.removeEventListener('animationend', onAnimEnd); currentStepSkipper = null; resolve(); }; }); }
+function calculerRangs(joueursTries) { let rangActuel = 0; let scorePrecedent = null; let nbExAequo = 1; joueursTries.forEach((joueur, index) => { if (joueur.scoreTotal !== scorePrecedent) { rangActuel += nbExAequo; nbExAequo = 1; } else { nbExAequo++; } joueur.rang = rangActuel; scorePrecedent = joueur.scoreTotal; }); return joueursTries; }
+function retirerJoueur(index) { joueurs.splice(index, 1); mettreAJourListeJoueurs(); verifierPeutDemarrer(); }
 function mettreAJourDatalistJeux() { datalistJeux.innerHTML = ''; categoriesJeuxConnues.forEach(nomJeu => { const option = document.createElement('option'); option.value = nomJeu; datalistJeux.appendChild(option); }); }
 async function chargerCategoriesConnues() { if (!currentUser) return; const userRef = db.collection('utilisateurs').doc(currentUser.uid); try { const querySnapshot = await userRef.collection('historique').get(); const nomsJeux = new Set(); querySnapshot.forEach(doc => { const nomJeu = doc.data().nomJeu; if (nomJeu) { nomsJeux.add(nomJeu); } }); categoriesJeuxConnues = [...nomsJeux].sort(); mettreAJourDatalistJeux(); } catch (err) { console.error("Erreur chargement catégories: ", err); } }
 function afficherSuggestionsJoueurs() { listeSuggestionsJoueurs.innerHTML = ''; if (joueursRecents.length === 0) { suggestionsJoueursDiv.classList.add('cache'); return; } suggestionsJoueursDiv.classList.remove('cache'); joueursRecents.sort((a,b) => a.nom.localeCompare(b.nom)).forEach(joueur => { const tag = document.createElement('div'); tag.className = 'joueur-suggestion-tag'; tag.dataset.nom = joueur.nom; tag.dataset.couleur = joueur.couleur; tag.innerHTML = ` <span class="joueur-couleur-swatch" style="background-color: ${joueur.couleur};"></span> <span>${joueur.nom}</span> `; listeSuggestionsJoueurs.appendChild(tag); }); }
 async function chargerJoueursRecents() { if (!currentUser) return; const userRef = db.collection('utilisateurs').doc(currentUser.uid); try { const querySnapshot = await userRef.collection('joueursRecents').get(); joueursRecents = []; querySnapshot.forEach(doc => { joueursRecents.push(doc.data()); }); afficherSuggestionsJoueurs(); } catch (err) { console.error("Erreur chargement joueurs récents: ", err); } }
 listeSuggestionsJoueurs.addEventListener('click', (e) => { const tag = e.target.closest('.joueur-suggestion-tag'); if (tag) { const nom = tag.dataset.nom; const couleur = tag.dataset.couleur; nomJoueurInput.value = nom; couleurJoueurInput.value = couleur; } });
-
-// --- 7. Écouteurs de navigation principaux ---
-navLinks.forEach(link => {
-    link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const pageId = link.dataset.page;
-        showPage(pageId);
-    });
-});
+function supprimerAmi(uid) { if (!currentUser) return; if(confirm("Supprimer cet ami ?")) { db.collection('utilisateurs').doc(currentUser.uid).collection('amis').doc(uid).delete().then(() => chargerAmis()); } }
+async function sauvegarderAmi(uid, nouveauSurnom, nouvelleCouleur, ancienNom) { if (!currentUser) return; await db.collection('utilisateurs').doc(currentUser.uid).collection('amis').doc(uid).update({ surnom: nouveauSurnom, couleur: nouvelleCouleur }); const historyRef = db.collection('utilisateurs').doc(currentUser.uid).collection('historique'); const snapshot = await historyRef.get(); snapshot.forEach(doc => { let data = doc.data(); let modified = false; if (data.joueursComplets) { data.joueursComplets = data.joueursComplets.map(j => { if (j.uid === uid || (!j.uid && j.nom === ancienNom)) { j.nom = nouveauSurnom; j.couleur = nouvelleCouleur; if (!j.uid) j.uid = uid; modified = true; } return j; }); } if (data.classement) { data.classement = data.classement.map(j => { if (j.uid === uid || (!j.uid && j.nom === ancienNom)) { j.nom = nouveauSurnom; j.couleur = nouvelleCouleur; if (!j.uid) j.uid = uid; modified = true; } return j; }); } if (modified) { historyRef.doc(doc.id).update({ joueursComplets: data.joueursComplets, classement: data.classement }); } }); chargerAmis(); chargerHistoriqueParties(); }
+// ... La fonction chargerAmis est déjà définie plus haut ... 
+async function chargerHistoriqueParties() { if (!currentUser) return; const userRef = db.collection('utilisateurs').doc(currentUser.uid); historyGridJeux.innerHTML = "Chargement..."; try { const querySnapshot = await userRef.collection('historique').orderBy('date', 'desc').get(); allHistoryData = []; querySnapshot.forEach(doc => { let data = doc.data(); data.id = doc.id; allHistoryData.push(data); }); if (allHistoryData.length === 0) { historyGridJeux.innerHTML = "<p>Aucun historique.</p>"; return; } const partiesParJeu = {}; allHistoryData.forEach(partie => { const nomJeu = partie.nomJeu || "Parties"; partiesParJeu[nomJeu] = (partiesParJeu[nomJeu] || 0) + 1; }); historyGridJeux.innerHTML = ""; Object.keys(partiesParJeu).sort().forEach(nomJeu => { const nb = partiesParJeu[nomJeu]; const div = document.createElement('div'); div.className = 'history-game-square'; div.dataset.nomJeu = nomJeu; div.innerHTML = `${nomJeu}<span>${nb} partie${nb>1?'s':''}</span>`; historyGridJeux.appendChild(div); }); afficherStatsGlobales(); } catch (err) { console.error(err); historyGridJeux.innerHTML = "<p>Erreur.</p>"; } }
+function afficherStatsGlobales() { if (allHistoryData.length === 0) return; const partiesParJeu = {}; allHistoryData.forEach(p => { const n = p.nomJeu || "Parties"; partiesParJeu[n] = (partiesParJeu[n]||0)+1; }); const freqTries = Object.entries(partiesParJeu).sort((a,b)=>b[1]-a[1]).slice(0,3); statsJeuxFrequenceListe.innerHTML = freqTries.map(([n,c]) => `<li>${n} <span>(${c})</span></li>`).join(''); const compteJoueurs = {}; allHistoryData.forEach(p => { (p.joueursComplets || p.classement).forEach(j => { compteJoueurs[j.nom] = (compteJoueurs[j.nom]||0)+1; }); }); const joueursTries = Object.entries(compteJoueurs).sort((a,b)=>b[1]-a[1]).slice(0,3); statsJoueursPodiumListe.innerHTML = joueursTries.map(([n,c]) => `<li>${n} <span>(${c})</span></li>`).join(''); const statsPerf = {}; allHistoryData.forEach(partie => { const nom = partie.nomJeu || "Parties"; const totalJ = partie.classement.length; if(totalJ <= 1) return; if(!statsPerf[nom]) statsPerf[nom] = { sumPct: 0, count: 0 }; let moi = partie.classement.find(j => j.uid === currentUser.uid); if(!moi && monProfilLocal.nom) moi = partie.classement.find(j => j.nom === monProfilLocal.nom); if(moi) { const pct = (totalJ - moi.rang) / (totalJ - 1); statsPerf[nom].sumPct += pct; statsPerf[nom].count++; } }); const perfTries = Object.entries(statsPerf).map(([n, d]) => ({ nom: n, avg: (d.count>0 ? (d.sumPct/d.count)*100 : 0) })).filter(x => x.avg > 0).sort((a,b) => b.avg - a.avg).slice(0,3); statsTopJeuxListe.innerHTML = perfTries.map(j => `<li>${j.nom} <span>(${j.avg.toFixed(0)}%)</span></li>`).join(''); }
+function afficherDetailsHistoriqueJeu(nomJeu) { historyDetailsTitle.textContent = `Historique : ${nomJeu}`; listeHistoriquePartiesDetails.innerHTML = ''; joueursSurGraphique = []; mettreAJourTagsGraphique(); const parties = allHistoryData.filter(p => (p.nomJeu||"Parties") === nomJeu).sort((a,b) => new Date(b.date)-new Date(a.date)); const joueursSet = new Set(); parties.forEach(p => p.classement.forEach(j => joueursSet.add(j.nom))); historyPlayerSelect.innerHTML = ''; joueursSet.forEach(nom => { const opt = document.createElement('option'); opt.value = nom; opt.text = nom; historyPlayerSelect.appendChild(opt); }); parties.forEach(p => { const d = new Date(p.date).toLocaleDateString(); const podium = p.classement.slice(0,3).map(j => `${j.rang}. ${j.nom} (${j.scoreTotal})`).join('  '); const div = document.createElement('div'); div.className = 'partie-historique'; div.innerHTML = `<div class="header-info"><span class="time-date">${d}</span><div class="action-buttons"><button class="voir-hist-btn" data-id="${p.id}">Voir</button><button class="supprimer-hist-btn" data-id="${p.id}">&times;</button></div></div><div class="podium-mini">${podium}</div>`; listeHistoriquePartiesDetails.appendChild(div); }); showPage('page-history-details'); }
+function mettreAJourTagsGraphique() { graphPlayersList.innerHTML = ''; joueursSurGraphique.forEach(nom => { const tag = document.createElement('span'); tag.className = 'graph-player-tag'; tag.innerHTML = `${nom} <button class="bouton-retirer">&times;</button>`; tag.querySelector('button').onclick = (e) => { e.stopPropagation(); joueursSurGraphique = joueursSurGraphique.filter(j => j !== nom); mettreAJourTagsGraphique(); const nomJeu = historyDetailsTitle.textContent.replace('Historique : ', ''); const parties = allHistoryData.filter(p => (p.nomJeu||"Parties") === nomJeu).sort((a,b)=>new Date(a.date)-new Date(b.date)); redessinerGraphiquePosition(parties); }; graphPlayersList.appendChild(tag); }); }
+function redessinerGraphiquePosition(parties) { if(monGraphiquePosition) monGraphiquePosition.destroy(); if(joueursSurGraphique.length === 0) return; const labels = parties.map((p,i) => `P${i+1}`); const datasets = joueursSurGraphique.map((nom, i) => { const data = parties.map(p => { const j = p.classement.find(x => x.nom === nom); if(!j) return null; const total = p.classement.length; return total > 1 ? ((total - j.rang)/(total-1))*100 : 100; }); return { label: nom, data, borderColor: COULEURS_GRAPH[i%COULEURS_GRAPH.length], fill: false, spanGaps: true }; }); monGraphiquePosition = new Chart(canvasGraphiquePosition, { type: 'line', data: { labels, datasets }, options: { scales: { y: { min: 0, max: 100, ticks: { callback: v => v+'%' } } } } }); }
+addPlayerToGraphBtn.addEventListener('click', () => { const nom = historyPlayerSelect.value; if(nom && !joueursSurGraphique.includes(nom)) { joueursSurGraphique.push(nom); mettreAJourTagsGraphique(); const nomJeu = historyDetailsTitle.textContent.replace('Historique : ', ''); const parties = allHistoryData.filter(p => (p.nomJeu||"Parties") === nomJeu).sort((a,b)=>new Date(a.date)-new Date(b.date)); redessinerGraphiquePosition(parties); } });
+historyGridJeux.addEventListener('click', (e) => { const square = e.target.closest('.history-game-square'); if (square) afficherDetailsHistoriqueJeu(square.dataset.nomJeu); });
+historyBackBtn.addEventListener('click', () => { showPage('page-history-grid'); joueursSurGraphique = []; mettreAJourTagsGraphique(); if(monGraphiquePosition) { monGraphiquePosition.destroy(); monGraphiquePosition=null; } });
+listeHistoriquePartiesDetails.addEventListener('click', async (e) => { const target = e.target; const id = target.dataset.id; if (!id || !currentUser) return; if (target.classList.contains('supprimer-hist-btn')) { if (confirm("Supprimer ?")) { await db.collection('utilisateurs').doc(currentUser.uid).collection('historique').doc(id).delete(); await chargerHistoriqueParties(); const nomJeu = historyDetailsTitle.textContent.replace('Historique : ', ''); afficherDetailsHistoriqueJeu(nomJeu); } } if (target.classList.contains('voir-hist-btn')) { const partieData = allHistoryData.find(p => p.id === id); if (partieData) { classementFinal = partieData.classement; joueurs = partieData.joueursComplets; lowScoreWins = partieData.lowScoreWins; mancheActuelle = partieData.manches; showPage('page-podium'); construirePodiumFinal(); recreerGraphiqueFinal(); } } });
