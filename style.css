@@ -13,25 +13,89 @@ html, body {
     display: none !important;
 }
 
-/* --- 2. AUTHENTIFICATION --- */
+/* --- 2. AUTHENTIFICATION (Refonte totale) --- */
 #auth-ecran {
     position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 90%;
-    max-width: 400px;
-    z-index: 200;
-    padding: 20px;
-    border: 1px solid #ddd;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-}
-#auth-ecran h3 {
+    top: 0;
+    left: 0;
     width: 100%;
-    text-align: center;
+    height: 100%;
+    background-color: #FDFBD4;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
 }
+
+.auth-container {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(102, 60, 31, 0.15);
+    text-align: center;
+    width: 90%;
+    max-width: 350px;
+    border: 2px solid #D9D7B6;
+}
+
+.auth-title {
+    font-size: 2em;
+    color: #663C1F;
+    margin-bottom: 20px;
+    font-weight: 900;
+}
+
+.auth-view {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.btn-auth {
+    padding: 12px;
+    font-size: 1em;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    width: 100%;
+    background-color: #2C5E1A;
+    color: white;
+    margin-top: 5px;
+}
+.btn-auth:hover { background-color: #1E4011; }
+
+.btn-outline {
+    background-color: transparent;
+    border: 2px solid #663C1F;
+    color: #663C1F;
+}
+.btn-outline:hover { background-color: #663C1F; color: white; }
+
+.btn-text-back {
+    background: none;
+    border: none;
+    color: #777;
+    text-decoration: underline;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.signup-row { display: flex; flex-direction: column; gap: 5px; text-align: left; }
+.signup-row.color-row { 
+    flex-direction: row; align-items: center; justify-content: space-between; 
+    background: #f9f9f9; padding: 10px; border-radius: 5px; border: 1px solid #eee;
+}
+
+.auth-container input {
+    padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box;
+}
+
+.erreur-msg { color: #dc3545; font-weight: bold; margin-top: 10px; }
+
 
 /* --- 3. LAYOUT GÉNÉRAL (GRID) --- */
 #app-layout {
@@ -71,7 +135,6 @@ html, body {
     width: 220px;
     background-color: #D9D7B6; /* Beige */
     border-right: 1px solid #000;
-    /* Padding retiré ici car géré par #nav-logo */
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -87,7 +150,6 @@ html, body {
 #nav-logo img, #nav-logo i {
     max-width: 100%;
     height: auto;
-    max-width: 150px;
 }
 
 #nav-links {
@@ -120,6 +182,7 @@ html, body {
     border-top: 1px solid #eee;
     font-size: 0.9em;
     color: #34495e;
+    text-align: center;
 }
 #user-info-nav p {
     margin-top: 0;
@@ -199,7 +262,6 @@ input[type="text"], input[type="number"], input[type="email"], input[type="passw
     border-radius: 4px;
     width: 150px;
 }
-/* Pour que le select prenne la place dispo */
 select {
     width: auto;
     flex-grow: 1;
@@ -243,7 +305,6 @@ button:disabled {
     background-color: #ddd;
 }
 
-/* NOUVEAU : Style spécifique pour le bouton annuler rouge */
 #annuler-tour:hover {
     background-color: #dc3545;
     color: white !important;
@@ -437,10 +498,7 @@ button:disabled {
 #autres-joueurs-liste li { font-size: 1.1em; padding: 8px; border-bottom: 1px solid #eee; }
 #graphique-final-container { margin-top: 20px; }
 
-/* --- 10. STYLES SPÉCIFIQUES AJOUTÉS (Amis, Stats, Graphiques) --- */
-
-.erreur-msg { color: #dc3545; width: 100%; text-align: center; margin-top: 10px; }
-
+/* --- 10. STYLES SPÉCIFIQUES --- */
 #liste-parties-sauvegardees button { margin: 5px; padding: 5px 10px; font-size: 0.9em; }
 #liste-parties-sauvegardees button.supprimer-btn { background-color: #dc3545; }
 
@@ -550,12 +608,10 @@ button:disabled {
 .add-graph-player-controls { display: flex; width: 100%; gap: 10px; align-items: center; }
 
 /* =============================================
-   RESPONSIVE DESIGN (VERSION MOBILE)
+   RESPONSIVE DESIGN (MOBILE)
    ============================================= */
-
 @media (max-width: 768px) {
 
-    /* 1. LAYOUT GÉNÉRAL : On casse la grille pour empiler les éléments */
     #app-layout {
         display: flex;
         flex-direction: column;
@@ -563,44 +619,35 @@ button:disabled {
         overflow: hidden; 
     }
 
-    /* 2. HEADER */
     #main-header {
         width: 100%;
         padding: 0 10px;
         box-sizing: border-box;
-        justify-content: center; /* Centre le titre */
+        justify-content: center;
     }
     #main-title {
         font-size: 1.5em; 
     }
 
-    /* 3. NAVIGATION (Le fameux bandeau) */
     #side-nav {
         width: 100%;
         height: auto;
         border-right: none;
         border-bottom: 2px solid #663C1F;
         padding: 5px;
-        
-        /* C'est ici que la magie opère : Flexbox horizontal */
         display: flex;
         flex-direction: row; 
         align-items: center;
-        justify-content: space-between; /* Espace entre les liens et le bouton */
-        
-        overflow-x: auto; /* Permet de scroller si ça dépasse */
+        justify-content: space-between;
+        overflow-x: auto;
         background-color: #D9D7B6;
         box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         z-index: 999;
         flex-shrink: 0;
     }
 
-    /* On cache le gros logo sur mobile */
-    #nav-logo {
-        display: none;
-    }
+    #nav-logo { display: none; }
 
-    /* Les liens de navigation */
     #nav-links {
         flex-direction: row;
         gap: 5px;
@@ -609,11 +656,11 @@ button:disabled {
 
     .nav-link {
         padding: 8px 10px;
-        font-size: 0.85em; /* Un peu plus petit */
+        font-size: 0.85em;
         border-left: none;
         border-bottom: 3px solid transparent;
         text-align: center;
-        white-space: nowrap; /* Empêche le texte de passer à la ligne */
+        white-space: nowrap;
     }
 
     .nav-link.active {
@@ -622,21 +669,16 @@ button:disabled {
         background-color: transparent;
     }
 
-    /* 4. BLOC UTILISATEUR (Correction du problème) */
     #user-info-nav {
-        width: auto; /* Ne prend plus toute la largeur ! */
-        border-top: none; /* Enlève la ligne de séparation */
+        width: auto;
+        border-top: none;
         padding: 0 10px;
         display: flex;
         align-items: center;
     }
 
-    /* On cache l'email sur mobile pour gagner de la place */
-    #user-info-nav p {
-        display: none; 
-    }
+    #user-info-nav p { display: none; }
 
-    /* On garde juste un petit bouton de déconnexion */
     #user-info-nav button {
         width: auto;
         padding: 5px 10px;
@@ -645,22 +687,17 @@ button:disabled {
         white-space: nowrap;
     }
 
-
-    /* 5. CONTENU PRINCIPAL */
     #main-content {
         width: 100%;
         padding: 15px;
         padding-bottom: 80px; 
     }
 
-    /* 6. RESTE DU STYLE (Score, Inputs...) */
     .score-main-container {
         flex-direction: column; 
     }
 
-    .score-gauche, .score-droite {
-        width: 100%;
-    }
+    .score-gauche, .score-droite { width: 100%; }
 
     .score-droite {
         margin-top: 20px;
@@ -694,7 +731,6 @@ button:disabled {
         margin-top: 10px;
     }
 
-    /* Exceptions pour les petits boutons */
     .add-graph-player-controls button,
     .friend-actions button,
     #user-info-nav button {
