@@ -369,6 +369,7 @@ function supprimerAmi(uid) {
     } 
 }
 
+// CETTE FONCTION APPELE chargerHistoriqueParties, IL FAUT QU'ELLE SOIT DÉFINIE AVANT OU APRÈS, MAIS PRÉSENTE
 async function sauvegarderAmi(uid, nouveauSurnom, nouvelleCouleur, ancienNom) { 
     if (!currentUser) return; 
     await db.collection('utilisateurs').doc(currentUser.uid).collection('amis').doc(uid).update({ surnom: nouveauSurnom, couleur: nouvelleCouleur }); 
@@ -392,7 +393,7 @@ async function sauvegarderAmi(uid, nouveauSurnom, nouvelleCouleur, ancienNom) {
         if (modified) { historyRef.doc(doc.id).update({ joueursComplets: data.joueursComplets, classement: data.classement }); } 
     }); 
     chargerAmis(); 
-    chargerHistoriqueParties(); 
+    chargerHistoriqueParties(); // C'est ici que l'erreur se produisait si la fonction manquait
 }
 
 function chargerAmis() { 
@@ -443,7 +444,7 @@ function chargerAmis() {
 }
 
 // =============================================================
-// 7. LOGIQUE JEU
+// 7. LOGIQUE JEU - CONFIGURATION
 // =============================================================
 
 function genererCouleurAleatoire() { return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'); }
@@ -552,7 +553,7 @@ demarrerBouton.addEventListener('click', () => {
 });
 
 // =============================================================
-// 8. IN-GAME
+// 8. IN-GAME LOGIC
 // =============================================================
 async function sauvegarderPartieEnCours(isNew = false) {
     if (!currentUser) return;
@@ -770,13 +771,12 @@ async function sauvegarderHistoriquePartie(classement) {
     } catch (err) { console.error("Erreur historique: ", err); } 
 }
 
-// CORRECTION HISTORIQUE (SUPPRESSION DE ORDERBY POUR ÉVITER LES ERREURS D'INDEX)
+// CORRECTION HISTORIQUE (LA FONCTION MANQUANTE EST ICI)
 async function chargerHistoriqueParties() { 
     if (!currentUser) return; 
     const userRef = db.collection('utilisateurs').doc(currentUser.uid); 
     historyGridJeux.innerHTML = "Chargement..."; 
     try { 
-        // Note: On récupère tout et on trie en JS pour éviter les erreurs d'index Firestore
         const querySnapshot = await userRef.collection('historique').get(); 
         allHistoryData = []; 
         querySnapshot.forEach(doc => { 
@@ -805,7 +805,7 @@ async function chargerHistoriqueParties() {
             const div = document.createElement('div'); 
             div.className = 'history-game-square'; 
             div.dataset.nomJeu = nomJeu; 
-            div.innerHTML = `${nomJeu}<span>${nb} partie${nb>1?'s':''}</span>`; 
+            div.innerHTML = `<h3>${nomJeu}</h3><span>${nb} partie${nb>1?'s':''}</span>`; 
             historyGridJeux.appendChild(div); 
         }); 
         
