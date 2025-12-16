@@ -226,19 +226,16 @@ auth.onAuthStateChanged(user => {
                 creerProfilPublic(user, user.email.split('@')[0], genererCouleurAleatoire());
             }
             
-            // Mise à jour variables globales
             monProfilLocal.nom = pseudoAffiche;
             monProfilLocal.couleur = couleurAffiche;
             monProfilLocal.uid = user.uid;
 
-            // Mise à jour UI
             navUserProfile.textContent = pseudoAffiche;
             profilePseudoInput.value = pseudoAffiche;
             profileColorInput.value = couleurAffiche;
 
-            // Initialiser listes
             resetConfigurationPartie();
-            chargerAmis(); // Appelé ICI pour avoir le profil prêt
+            chargerAmis(); 
         });
 
         chargerListeParties();
@@ -280,7 +277,6 @@ btnUpdateProfile.addEventListener('click', () => {
         profileMsg.classList.remove('cache');
         setTimeout(() => profileMsg.classList.add('cache'), 3000);
         
-        // Refresh UI qui dépend du profil
         resetConfigurationPartie();
         chargerAmis();
     });
@@ -304,7 +300,151 @@ btnUpdatePassword.addEventListener('click', () => {
 });
 
 // =============================================================
-// 6. LOGIQUE JEU - CONFIGURATION
+// 6. GESTION DES AMIS (Partie manquante corrigée)
+// =============================================================
+
+// Écouteur du bouton Ajouter Ami
+btnAddFriend.addEventListener('click', () => {
+    const email = friendEmailInput.value.trim();
+    const nickname = friendNicknameInput.value.trim();
+    const color = friendColorInput.value;
+
+    if (email) {
+        ajouterAmi(email, nickname, color);
+    } else {
+        friendAddMsg.textContent = "Veuillez entrer un email.";
+        friendAddMsg.style.color = "red";
+        friendAddMsg.classList.remove('cache');
+    }
+});
+
+// Fonction Ajouter Ami avec Gestion d'erreur
+function ajouterAmi(email, nickname, color) {
+    friendAddMsg.classList.remove('cache');
+    friendAddMsg.textContent = "Recherche en cours...";
+    friendAddMsg.style.color = "blue";
+
+    db.collection('users_public').where('email', '==', email).get()
+    .then(snapshot => {
+        if (snapshot.empty) {
+            friendAddMsg.textContent = "Aucun compte trouvé avec cet email.";
+            friendAddMsg.style.color = "red";
+            return;
+        }
+        
+        const amiDoc = snapshot.docs[0].data();
+        const amiUid = amiDoc.uid;
+        const amiEmail = amiDoc.email;
+
+        // Valeurs par défaut
+        const finalNickname = nickname || amiDoc.pseudo || amiEmail.split('@')[0];
+        const finalColor = color || amiDoc.couleur || genererCouleurAleatoire();
+
+        db.collection('utilisateurs').doc(currentUser.uid).collection('amis').doc(amiUid).set({
+            email: amiEmail,
+            uid: amiUid,
+            surnom: finalNickname,
+            couleur: finalColor,
+            dateAjout: new Date().toISOString()
+        }).then(() => {
+            friendAddMsg.textContent = "Ami ajouté !";
+            friendAddMsg.style.color = "green";
+            friendEmailInput.value = "";
+            friendNicknameInput.value = "";
+            chargerAmis();
+            
+            setTimeout(() => { friendAddMsg.classList.add('cache'); }, 3000);
+        });
+    })
+    .catch(err => {
+        console.error("Erreur ajout ami", err);
+        friendAddMsg.textContent = "Erreur lors de l'ajout.";
+        friendAddMsg.style.color = "red";
+    });
+}
+
+function supprimerAmi(uid) { 
+    if (!currentUser) return; 
+    if(confirm("Supprimer cet ami ?")) { 
+        db.collection('utilisateurs').doc(currentUser.uid).collection('amis').doc(uid).delete().then(() => chargerAmis()); 
+    } 
+}
+
+async function sauvegarderAmi(uid, nouveauSurnom, nouvelleCouleur, ancienNom) { 
+    if (!currentUser) return; 
+    await db.collection('utilisateurs').doc(currentUser.uid).collection('amis').doc(uid).update({ surnom: nouveauSurnom, couleur: nouvelleCouleur }); 
+    const historyRef = db.collection('utilisateurs').doc(currentUser.uid).collection('historique'); 
+    const snapshot = await historyRef.get(); 
+    snapshot.forEach(doc => { 
+        let data = doc.data(); 
+        let modified = false; 
+        if (data.joueursComplets) { 
+            data.joueursComplets = data.joueursComplets.map(j => { 
+                if (j.uid === uid || (!j.uid && j.nom === ancienNom)) { j.nom = nouveauSurnom; j.couleur = nouvelleCouleur; if (!j.uid) j.uid = uid; modified = true; } 
+                return j; 
+            }); 
+        } 
+        if (data.classement) { 
+            data.classement = data.classement.map(j => { 
+                if (j.uid === uid || (!j.uid && j.nom === ancienNom)) { j.nom = nouveauSurnom; j.couleur = nouvelleCouleur; if (!j.uid) j.uid = uid; modified = true; } 
+                return j; 
+            }); 
+        } 
+        if (modified) { historyRef.doc(doc.id).update({ joueursComplets: data.joueursComplets, classement: data.classement }); } 
+    }); 
+    chargerAmis(); 
+    chargerHistoriqueParties(); 
+}
+
+function chargerAmis() { 
+    if (!currentUser) return; 
+    db.collection('utilisateurs').doc(currentUser.uid).collection('amis').get().then(snapshot => { 
+        mesAmis = []; 
+        friendsListContainer.innerHTML = ""; 
+        selectAmiAjout.innerHTML = '<option value="">-- Choisir un profil --</option>'; 
+        
+        // 1. AJOUTER "MOI"
+        if (monProfilLocal.nom) {
+            const optMe = document.createElement('option');
+            optMe.value = currentUser.uid;
+            optMe.text = `👤 Moi (${monProfilLocal.nom})`; 
+            optMe.dataset.couleur = monProfilLocal.couleur;
+            selectAmiAjout.appendChild(optMe);
+        }
+
+        if (snapshot.empty) { friendsListContainer.innerHTML = "<p>Pas d'amis.</p>"; return; } 
+        
+        // 2. AJOUTER AMIS
+        snapshot.forEach(doc => { 
+            const ami = doc.data(); 
+            mesAmis.push(ami); 
+            const pseudo = ami.surnom || ami.email; 
+            const couleur = ami.couleur || "#CCCCCC"; 
+            const div = document.createElement('div'); 
+            div.className = 'friend-item'; 
+            div.innerHTML = ` 
+                <div class="friend-view"> 
+                    <div class="friend-info"> <span class="friend-color-swatch" style="background-color: ${couleur};"></span> <span>${pseudo}</span> <span class="friend-email">(${ami.email})</span> </div> 
+                    <div class="friend-actions"> <button class="btn-icon btn-edit-friend"><i class="fa-solid fa-pencil"></i></button> <button class="btn-icon btn-delete-friend"><i class="fa-solid fa-trash"></i></button> </div> 
+                </div> 
+                <div class="friend-edit-form"> <input type="text" class="edit-surnom" value="${pseudo}"> <input type="color" class="edit-couleur" value="${couleur}"> <button class="btn-save-friend"><i class="fa-solid fa-check"></i></button> <button class="btn-cancel-friend"><i class="fa-solid fa-times"></i></button> </div> 
+            `; 
+            friendsListContainer.appendChild(div); 
+            const viewDiv = div.querySelector('.friend-view'); const editDiv = div.querySelector('.friend-edit-form'); 
+            viewDiv.querySelector('.btn-edit-friend').onclick = () => { viewDiv.style.display = 'none'; editDiv.style.display = 'flex'; }; 
+            viewDiv.querySelector('.btn-delete-friend').onclick = () => supprimerAmi(ami.uid); 
+            editDiv.querySelector('.btn-cancel-friend').onclick = () => { editDiv.style.display = 'none'; viewDiv.style.display = 'flex'; }; 
+            editDiv.querySelector('.btn-save-friend').onclick = () => { sauvegarderAmi(ami.uid, editDiv.querySelector('.edit-surnom').value, editDiv.querySelector('.edit-couleur').value, pseudo); }; 
+            
+            const opt = document.createElement('option'); 
+            opt.value = ami.uid; opt.text = pseudo; opt.dataset.couleur = couleur; 
+            selectAmiAjout.appendChild(opt); 
+        }); 
+    }); 
+}
+
+// =============================================================
+// 7. LOGIQUE JEU - CONFIGURATION
 // =============================================================
 
 function genererCouleurAleatoire() { return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'); }
@@ -330,7 +470,7 @@ ajouterBouton.addEventListener('click', () => {
     const selectedAmiIndex = selectAmiAjout.selectedIndex;
     if (selectedAmiIndex > 0) { 
         const option = selectAmiAjout.options[selectedAmiIndex];
-        nom = option.text.replace('👤 Moi (', '').replace(')', ''); // Nettoyage au cas où on sélectionne "Moi"
+        nom = option.text.replace('👤 Moi (', '').replace(')', ''); 
         uidAmi = option.value; 
         if (option.dataset.couleur) couleur = option.dataset.couleur;
     }
@@ -413,7 +553,7 @@ demarrerBouton.addEventListener('click', () => {
 });
 
 // =============================================================
-// 7. IN-GAME LOGIC
+// 8. IN-GAME LOGIC
 // =============================================================
 async function sauvegarderPartieEnCours(isNew = false) {
     if (!currentUser) return;
@@ -581,7 +721,7 @@ annulerTourBouton.addEventListener('click', () => {
 });
 
 // =============================================================
-// 8. FIN DE PARTIE & STATS
+// 9. FIN DE PARTIE & STATS
 // =============================================================
 arreterMaintenantBouton.addEventListener('click', terminerPartie);
 
@@ -683,55 +823,6 @@ function afficherStatsGlobales() {
     statsJoueursPodiumListe.innerHTML = joueursTries.map(([n,c]) => `<li>${n} <span>(${c})</span></li>`).join('');
 }
 
-// --- AMIS : MISE A JOUR DROPDOWN (AJOUT PROFIL PERSO) ---
-function chargerAmis() { 
-    if (!currentUser) return; 
-    db.collection('utilisateurs').doc(currentUser.uid).collection('amis').get().then(snapshot => { 
-        mesAmis = []; 
-        friendsListContainer.innerHTML = ""; 
-        // MODIFIÉ : Option par défaut
-        selectAmiAjout.innerHTML = '<option value="">-- Choisir un profil --</option>'; 
-        
-        // 1. AJOUTER "MOI" EN PREMIER
-        if (monProfilLocal.nom) {
-            const optMe = document.createElement('option');
-            optMe.value = currentUser.uid;
-            optMe.text = `👤 Moi (${monProfilLocal.nom})`; // Visuel clair
-            optMe.dataset.couleur = monProfilLocal.couleur;
-            selectAmiAjout.appendChild(optMe);
-        }
-
-        if (snapshot.empty) { friendsListContainer.innerHTML = "<p>Pas d'amis.</p>"; return; } 
-        
-        // 2. AJOUTER LES AMIS
-        snapshot.forEach(doc => { 
-            const ami = doc.data(); 
-            mesAmis.push(ami); 
-            const pseudo = ami.surnom || ami.email; 
-            const couleur = ami.couleur || "#CCCCCC"; 
-            const div = document.createElement('div'); 
-            div.className = 'friend-item'; 
-            div.innerHTML = ` 
-                <div class="friend-view"> 
-                    <div class="friend-info"> <span class="friend-color-swatch" style="background-color: ${couleur};"></span> <span>${pseudo}</span> <span class="friend-email">(${ami.email})</span> </div> 
-                    <div class="friend-actions"> <button class="btn-icon btn-edit-friend"><i class="fa-solid fa-pencil"></i></button> <button class="btn-icon btn-delete-friend"><i class="fa-solid fa-trash"></i></button> </div> 
-                </div> 
-                <div class="friend-edit-form"> <input type="text" class="edit-surnom" value="${pseudo}"> <input type="color" class="edit-couleur" value="${couleur}"> <button class="btn-save-friend"><i class="fa-solid fa-check"></i></button> <button class="btn-cancel-friend"><i class="fa-solid fa-times"></i></button> </div> 
-            `; 
-            friendsListContainer.appendChild(div); 
-            const viewDiv = div.querySelector('.friend-view'); const editDiv = div.querySelector('.friend-edit-form'); 
-            viewDiv.querySelector('.btn-edit-friend').onclick = () => { viewDiv.style.display = 'none'; editDiv.style.display = 'flex'; }; 
-            viewDiv.querySelector('.btn-delete-friend').onclick = () => supprimerAmi(ami.uid); 
-            editDiv.querySelector('.btn-cancel-friend').onclick = () => { editDiv.style.display = 'none'; viewDiv.style.display = 'flex'; }; 
-            editDiv.querySelector('.btn-save-friend').onclick = () => { sauvegarderAmi(ami.uid, editDiv.querySelector('.edit-surnom').value, editDiv.querySelector('.edit-couleur').value, pseudo); }; 
-            
-            const opt = document.createElement('option'); 
-            opt.value = ami.uid; opt.text = pseudo; opt.dataset.couleur = couleur; 
-            selectAmiAjout.appendChild(opt); 
-        }); 
-    }); 
-}
-
 // --- RESTE (Helpers, Reveal, Graphiques) ---
 function genererChampsSaisie() { saisiePointsDiv.innerHTML = ''; joueurs.forEach((joueur, index) => { const div = document.createElement('div'); div.className = 'saisie-item'; div.innerHTML = ` <label for="score-${index}"> <span class="score-couleur-swatch" style="background-color: ${joueur.couleur};"></span> ${joueur.nom} : </label> <input type="number" id="score-${index}" value="0"> `; saisiePointsDiv.appendChild(div); }); }
 function mettreAJourScoresAffichage() { scoreAffichageDiv.innerHTML = ''; let listePourAffichage = []; if (!scoresSecrets) { let joueursTries = [...joueurs].sort((a, b) => { return lowScoreWins ? a.scoreTotal - b.scoreTotal : b.scoreTotal - a.scoreTotal; }); listePourAffichage = calculerRangs(joueursTries); } else { listePourAffichage = joueurs; } let html = '<table class="classement-table">'; html += '<thead><tr><th>#</th><th>Joueur</th><th>Total</th></tr></thead>'; html += '<tbody>'; listePourAffichage.forEach((joueur) => { const rangAffichage = joueur.rang && !scoresSecrets ? joueur.rang : '-'; html += ` <tr> <td>${rangAffichage}</td> <td> <span class="score-couleur-swatch" style="background-color: ${joueur.couleur};"></span> ${joueur.nom} </td> <td class="score-total">${scoresSecrets ? '???' : `${joueur.scoreTotal} pts`}</td> </tr> `; }); html += '</tbody></table>'; scoreAffichageDiv.innerHTML = html; }
@@ -769,14 +860,6 @@ async function chargerCategoriesConnues() { if (!currentUser) return; const user
 function afficherSuggestionsJoueurs() { listeSuggestionsJoueurs.innerHTML = ''; if (joueursRecents.length === 0) { suggestionsJoueursDiv.classList.add('cache'); return; } suggestionsJoueursDiv.classList.remove('cache'); joueursRecents.sort((a,b) => a.nom.localeCompare(b.nom)).forEach(joueur => { const tag = document.createElement('div'); tag.className = 'joueur-suggestion-tag'; tag.dataset.nom = joueur.nom; tag.dataset.couleur = joueur.couleur; tag.innerHTML = ` <span class="joueur-couleur-swatch" style="background-color: ${joueur.couleur};"></span> <span>${joueur.nom}</span> `; listeSuggestionsJoueurs.appendChild(tag); }); }
 async function chargerJoueursRecents() { if (!currentUser) return; const userRef = db.collection('utilisateurs').doc(currentUser.uid); try { const querySnapshot = await userRef.collection('joueursRecents').get(); joueursRecents = []; querySnapshot.forEach(doc => { joueursRecents.push(doc.data()); }); afficherSuggestionsJoueurs(); } catch (err) { console.error("Erreur chargement joueurs récents: ", err); } }
 listeSuggestionsJoueurs.addEventListener('click', (e) => { const tag = e.target.closest('.joueur-suggestion-tag'); if (tag) { const nom = tag.dataset.nom; const couleur = tag.dataset.couleur; nomJoueurInput.value = nom; couleurJoueurInput.value = couleur; } });
-function supprimerAmi(uid) { if (!currentUser) return; if(confirm("Supprimer cet ami ?")) { db.collection('utilisateurs').doc(currentUser.uid).collection('amis').doc(uid).delete().then(() => chargerAmis()); } }
-async function sauvegarderAmi(uid, nouveauSurnom, nouvelleCouleur, ancienNom) { if (!currentUser) return; await db.collection('utilisateurs').doc(currentUser.uid).collection('amis').doc(uid).update({ surnom: nouveauSurnom, couleur: nouvelleCouleur }); const historyRef = db.collection('utilisateurs').doc(currentUser.uid).collection('historique'); const snapshot = await historyRef.get(); snapshot.forEach(doc => { let data = doc.data(); let modified = false; if (data.joueursComplets) { data.joueursComplets = data.joueursComplets.map(j => { if (j.uid === uid || (!j.uid && j.nom === ancienNom)) { j.nom = nouveauSurnom; j.couleur = nouvelleCouleur; if (!j.uid) j.uid = uid; modified = true; } return j; }); } if (data.classement) { data.classement = data.classement.map(j => { if (j.uid === uid || (!j.uid && j.nom === ancienNom)) { j.nom = nouveauSurnom; j.couleur = nouvelleCouleur; if (!j.uid) j.uid = uid; modified = true; } return j; }); } if (modified) { historyRef.doc(doc.id).update({ joueursComplets: data.joueursComplets, classement: data.classement }); } }); chargerAmis(); chargerHistoriqueParties(); }
-// ... La fonction chargerAmis est déjà définie plus haut ... 
-async function chargerHistoriqueParties() { if (!currentUser) return; const userRef = db.collection('utilisateurs').doc(currentUser.uid); historyGridJeux.innerHTML = "Chargement..."; try { const querySnapshot = await userRef.collection('historique').orderBy('date', 'desc').get(); allHistoryData = []; querySnapshot.forEach(doc => { let data = doc.data(); data.id = doc.id; allHistoryData.push(data); }); if (allHistoryData.length === 0) { historyGridJeux.innerHTML = "<p>Aucun historique.</p>"; return; } const partiesParJeu = {}; allHistoryData.forEach(partie => { const nomJeu = partie.nomJeu || "Parties"; partiesParJeu[nomJeu] = (partiesParJeu[nomJeu] || 0) + 1; }); historyGridJeux.innerHTML = ""; Object.keys(partiesParJeu).sort().forEach(nomJeu => { const nb = partiesParJeu[nomJeu]; const div = document.createElement('div'); div.className = 'history-game-square'; div.dataset.nomJeu = nomJeu; div.innerHTML = `${nomJeu}<span>${nb} partie${nb>1?'s':''}</span>`; historyGridJeux.appendChild(div); }); afficherStatsGlobales(); } catch (err) { console.error(err); historyGridJeux.innerHTML = "<p>Erreur.</p>"; } }
-function afficherStatsGlobales() { if (allHistoryData.length === 0) return; const partiesParJeu = {}; allHistoryData.forEach(p => { const n = p.nomJeu || "Parties"; partiesParJeu[n] = (partiesParJeu[n]||0)+1; }); const freqTries = Object.entries(partiesParJeu).sort((a,b)=>b[1]-a[1]).slice(0,3); statsJeuxFrequenceListe.innerHTML = freqTries.map(([n,c]) => `<li>${n} <span>(${c})</span></li>`).join(''); const compteJoueurs = {}; allHistoryData.forEach(p => { (p.joueursComplets || p.classement).forEach(j => { compteJoueurs[j.nom] = (compteJoueurs[j.nom]||0)+1; }); }); const joueursTries = Object.entries(compteJoueurs).sort((a,b)=>b[1]-a[1]).slice(0,3); statsJoueursPodiumListe.innerHTML = joueursTries.map(([n,c]) => `<li>${n} <span>(${c})</span></li>`).join(''); const statsPerf = {}; allHistoryData.forEach(partie => { const nom = partie.nomJeu || "Parties"; const totalJ = partie.classement.length; if(totalJ <= 1) return; if(!statsPerf[nom]) statsPerf[nom] = { sumPct: 0, count: 0 }; let moi = partie.classement.find(j => j.uid === currentUser.uid); if(!moi && monProfilLocal.nom) moi = partie.classement.find(j => j.nom === monProfilLocal.nom); if(moi) { const pct = (totalJ - moi.rang) / (totalJ - 1); statsPerf[nom].sumPct += pct; statsPerf[nom].count++; } }); const perfTries = Object.entries(statsPerf).map(([n, d]) => ({ nom: n, avg: (d.count>0 ? (d.sumPct/d.count)*100 : 0) })).filter(x => x.avg > 0).sort((a,b) => b.avg - a.avg).slice(0,3); statsTopJeuxListe.innerHTML = perfTries.map(j => `<li>${j.nom} <span>(${j.avg.toFixed(0)}%)</span></li>`).join(''); }
-function afficherDetailsHistoriqueJeu(nomJeu) { historyDetailsTitle.textContent = `Historique : ${nomJeu}`; listeHistoriquePartiesDetails.innerHTML = ''; joueursSurGraphique = []; mettreAJourTagsGraphique(); const parties = allHistoryData.filter(p => (p.nomJeu||"Parties") === nomJeu).sort((a,b) => new Date(b.date)-new Date(a.date)); const joueursSet = new Set(); parties.forEach(p => p.classement.forEach(j => joueursSet.add(j.nom))); historyPlayerSelect.innerHTML = ''; joueursSet.forEach(nom => { const opt = document.createElement('option'); opt.value = nom; opt.text = nom; historyPlayerSelect.appendChild(opt); }); parties.forEach(p => { const d = new Date(p.date).toLocaleDateString(); const podium = p.classement.slice(0,3).map(j => `${j.rang}. ${j.nom} (${j.scoreTotal})`).join('  '); const div = document.createElement('div'); div.className = 'partie-historique'; div.innerHTML = `<div class="header-info"><span class="time-date">${d}</span><div class="action-buttons"><button class="voir-hist-btn" data-id="${p.id}">Voir</button><button class="supprimer-hist-btn" data-id="${p.id}">&times;</button></div></div><div class="podium-mini">${podium}</div>`; listeHistoriquePartiesDetails.appendChild(div); }); showPage('page-history-details'); }
-function mettreAJourTagsGraphique() { graphPlayersList.innerHTML = ''; joueursSurGraphique.forEach(nom => { const tag = document.createElement('span'); tag.className = 'graph-player-tag'; tag.innerHTML = `${nom} <button class="bouton-retirer">&times;</button>`; tag.querySelector('button').onclick = (e) => { e.stopPropagation(); joueursSurGraphique = joueursSurGraphique.filter(j => j !== nom); mettreAJourTagsGraphique(); const nomJeu = historyDetailsTitle.textContent.replace('Historique : ', ''); const parties = allHistoryData.filter(p => (p.nomJeu||"Parties") === nomJeu).sort((a,b)=>new Date(a.date)-new Date(b.date)); redessinerGraphiquePosition(parties); }; graphPlayersList.appendChild(tag); }); }
-function redessinerGraphiquePosition(parties) { if(monGraphiquePosition) monGraphiquePosition.destroy(); if(joueursSurGraphique.length === 0) return; const labels = parties.map((p,i) => `P${i+1}`); const datasets = joueursSurGraphique.map((nom, i) => { const data = parties.map(p => { const j = p.classement.find(x => x.nom === nom); if(!j) return null; const total = p.classement.length; return total > 1 ? ((total - j.rang)/(total-1))*100 : 100; }); return { label: nom, data, borderColor: COULEURS_GRAPH[i%COULEURS_GRAPH.length], fill: false, spanGaps: true }; }); monGraphiquePosition = new Chart(canvasGraphiquePosition, { type: 'line', data: { labels, datasets }, options: { scales: { y: { min: 0, max: 100, ticks: { callback: v => v+'%' } } } } }); }
 addPlayerToGraphBtn.addEventListener('click', () => { const nom = historyPlayerSelect.value; if(nom && !joueursSurGraphique.includes(nom)) { joueursSurGraphique.push(nom); mettreAJourTagsGraphique(); const nomJeu = historyDetailsTitle.textContent.replace('Historique : ', ''); const parties = allHistoryData.filter(p => (p.nomJeu||"Parties") === nomJeu).sort((a,b)=>new Date(a.date)-new Date(b.date)); redessinerGraphiquePosition(parties); } });
 historyGridJeux.addEventListener('click', (e) => { const square = e.target.closest('.history-game-square'); if (square) afficherDetailsHistoriqueJeu(square.dataset.nomJeu); });
 historyBackBtn.addEventListener('click', () => { showPage('page-history-grid'); joueursSurGraphique = []; mettreAJourTagsGraphique(); if(monGraphiquePosition) { monGraphiquePosition.destroy(); monGraphiquePosition=null; } });
