@@ -991,3 +991,189 @@ addPlayerToGraphBtn.addEventListener('click', () => { const nom = historyPlayerS
 historyGridJeux.addEventListener('click', (e) => { const square = e.target.closest('.history-game-square'); if (square) afficherDetailsHistoriqueJeu(square.dataset.nomJeu); });
 historyBackBtn.addEventListener('click', () => { showPage('page-history-grid'); joueursSurGraphique = []; mettreAJourTagsGraphique(); if(monGraphiquePosition) { monGraphiquePosition.destroy(); monGraphiquePosition=null; } });
 listeHistoriquePartiesDetails.addEventListener('click', async (e) => { const target = e.target; const id = target.dataset.id; if (!id || !currentUser) return; if (target.classList.contains('supprimer-hist-btn')) { if (confirm("Supprimer ?")) { await db.collection('utilisateurs').doc(currentUser.uid).collection('historique').doc(id).delete(); await chargerHistoriqueParties(); const nomJeu = historyDetailsTitle.textContent.replace('Historique : ', ''); afficherDetailsHistoriqueJeu(nomJeu); } } if (target.classList.contains('voir-hist-btn')) { const partieData = allHistoryData.find(p => p.id === id); if (partieData) { classementFinal = partieData.classement; joueurs = partieData.joueursComplets; lowScoreWins = partieData.lowScoreWins; mancheActuelle = partieData.manches; showPage('page-podium'); construirePodiumFinal(); recreerGraphiqueFinal(); } } });
+
+// =============================================================
+// 10. FONCTIONS MANQUANTES (HISTORIQUE DÉTAILLÉ)
+// =============================================================
+
+// Affiche la page de détails avec la liste des parties pour un jeu donné
+function afficherDetailsHistoriqueJeu(nomJeu) {
+    // 1. Changement de page et Titre
+    showPage('page-history-details');
+    historyDetailsTitle.textContent = `Historique : ${nomJeu}`;
+
+    // 2. Filtrer les données pour ce jeu
+    // On gère le cas où nomJeu est undefined dans la base (anciennes parties)
+    const partiesDuJeu = allHistoryData.filter(p => (p.nomJeu || "Parties") === nomJeu);
+
+    // 3. Remplir le select pour le graphique (Liste des joueurs uniques ayant joué à ce jeu)
+    const joueursUniques = new Set();
+    partiesDuJeu.forEach(p => {
+        if (p.classement) p.classement.forEach(j => joueursUniques.add(j.nom));
+        if (p.joueursComplets) p.joueursComplets.forEach(j => joueursUniques.add(j.nom));
+    });
+    
+    historyPlayerSelect.innerHTML = '<option value="">-- Ajouter au graphique --</option>';
+    [...joueursUniques].sort().forEach(nom => {
+        const opt = document.createElement('option');
+        opt.value = nom;
+        opt.textContent = nom;
+        historyPlayerSelect.appendChild(opt);
+    });
+
+    // 4. Reset du graphique et des tags
+    joueursSurGraphique = []; // On vide la sélection précédente
+    // On ajoute automatiquement l'utilisateur courant s'il a joué
+    if (monProfilLocal.nom && joueursUniques.has(monProfilLocal.nom)) {
+        joueursSurGraphique.push(monProfilLocal.nom);
+    }
+    mettreAJourTagsGraphique();
+    redessinerGraphiquePosition(partiesDuJeu);
+
+    // 5. Afficher la liste des parties (Cartes)
+    listeHistoriquePartiesDetails.innerHTML = '';
+    
+    if (partiesDuJeu.length === 0) {
+        listeHistoriquePartiesDetails.innerHTML = "<p>Aucune donnée trouvée.</p>";
+        return;
+    }
+
+    partiesDuJeu.forEach(partie => {
+        const div = document.createElement('div');
+        div.className = 'partie-historique';
+        
+        // Formatage de la date
+        const dateObj = new Date(partie.date);
+        const dateStr = dateObj.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+        const heureStr = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+        // Création du mini-podium (Top 3) pour l'aperçu
+        let podiumHTML = '';
+        if (partie.classement) {
+            const top3 = partie.classement.filter(j => j.rang <= 3).sort((a,b) => a.rang - b.rang);
+            top3.forEach(j => {
+                let medaille = '';
+                if(j.rang === 1) medaille = '🥇';
+                if(j.rang === 2) medaille = '🥈';
+                if(j.rang === 3) medaille = '🥉';
+                podiumHTML += `<span style="margin-right:10px;"><span class="podium-medaille-small">${medaille}</span> ${j.nom} <strong>${j.scoreTotal}</strong></span>`;
+            });
+        }
+
+        div.innerHTML = `
+            <div class="header-info">
+                <span class="time-date"><i class="far fa-calendar-alt"></i> ${dateStr} à ${heureStr}</span>
+                <div class="action-buttons">
+                    <button class="voir-hist-btn" data-id="${partie.id}"><i class="fas fa-eye"></i> Voir</button>
+                    <button class="supprimer-hist-btn" data-id="${partie.id}"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+            <div class="podium-mini">
+                ${podiumHTML}
+            </div>
+            <div style="margin-top:5px; font-size:0.85em; color:#666;">
+                ${partie.manches} manches jouées • ${partie.lowScoreWins ? 'Le plus petit gagne' : 'Le plus grand gagne'}
+            </div>
+        `;
+        listeHistoriquePartiesDetails.appendChild(div);
+    });
+}
+
+// Met à jour les petites étiquettes des joueurs sous le graphique d'analyse
+function mettreAJourTagsGraphique() {
+    graphPlayersList.innerHTML = '';
+    joueursSurGraphique.forEach((nom, index) => {
+        const tag = document.createElement('div');
+        tag.className = 'graph-player-tag';
+        // Attribution d'une couleur fixe basée sur l'index pour la cohérence visuelle
+        const couleur = COULEURS_GRAPH[index % COULEURS_GRAPH.length];
+        tag.style.borderLeft = `4px solid ${couleur}`;
+        
+        tag.innerHTML = `${nom} <span class="bouton-retirer" data-nom="${nom}">&times;</span>`;
+        
+        // Gestion suppression du joueur du graph
+        tag.querySelector('.bouton-retirer').addEventListener('click', (e) => {
+            e.stopPropagation(); // Évite de déclencher d'autres clics
+            joueursSurGraphique = joueursSurGraphique.filter(n => n !== nom);
+            mettreAJourTagsGraphique();
+            
+            // On recharge le graph
+            const nomJeu = historyDetailsTitle.textContent.replace('Historique : ', '');
+            const parties = allHistoryData.filter(p => (p.nomJeu || "Parties") === nomJeu).sort((a,b)=>new Date(a.date)-new Date(b.date));
+            redessinerGraphiquePosition(parties);
+        });
+        
+        graphPlayersList.appendChild(tag);
+    });
+}
+
+// Dessine le graphique d'évolution des positions (Analyse)
+function redessinerGraphiquePosition(partiesTrieesParDate) {
+    // Si aucun joueur sélectionné ou pas de parties, on nettoie
+    if (joueursSurGraphique.length === 0 || partiesTrieesParDate.length === 0) {
+        if(monGraphiquePosition) {
+            monGraphiquePosition.destroy();
+            monGraphiquePosition = null;
+        }
+        return;
+    }
+
+    // Inverser l'ordre des dates pour le graph (Chronologique : Ancien -> Récent)
+    // Note: partiesTrieesParDate arrive souvent trié "Plus récent en premier" depuis Firebase
+    // On s'assure qu'elles sont dans l'ordre chronologique croissant pour le dessin
+    const partiesChronologiques = [...partiesTrieesParDate].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const labels = partiesChronologiques.map(p => {
+        const d = new Date(p.date);
+        return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+    });
+
+    const datasets = joueursSurGraphique.map((nomJoueur, index) => {
+        const data = partiesChronologiques.map(partie => {
+            // Trouver le rang du joueur dans cette partie
+            const joueurData = partie.classement.find(j => j.nom === nomJoueur);
+            return joueurData ? joueurData.rang : null; // null si pas joué, ChartJS gère les trous
+        });
+
+        const couleur = COULEURS_GRAPH[index % COULEURS_GRAPH.length];
+
+        return {
+            label: nomJoueur,
+            data: data,
+            borderColor: couleur,
+            backgroundColor: couleur,
+            tension: 0.1,
+            spanGaps: true // Relie les points même s'il a raté une partie au milieu
+        };
+    });
+
+    if (monGraphiquePosition) monGraphiquePosition.destroy();
+
+    monGraphiquePosition = new Chart(canvasGraphiquePosition, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    reverse: true, // IMPORTANT : Le rang 1 est en haut, le rang 10 en bas
+                    title: { display: true, text: 'Position (Rang)' },
+                    min: 1,
+                    ticks: { stepSize: 1 }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.y + (context.parsed.y === 1 ? 'er' : 'ème');
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
