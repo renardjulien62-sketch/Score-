@@ -997,7 +997,7 @@ function afficherDetailsHistoriqueJeu(nomJeu) {
                 if(j.rang === 3) medaille = '🥉';
                 
                 // --- CORRECTION ICI : Ajout de " : " ---
-                podiumHTML += `<span style="margin-right:10px;"><span class="podium-medaille-small">${medaille}</span> ${j.nom} : <strong>${j.scoreTotal}</strong></span>`;
+                podiumHTML += `<span style="margin-right:10px;"><span class="podium-medaille-small">${medaille}</span> ${j.nom} : <strong>${ j.scoreTotal}</strong></span>`;
             });
         }
 
