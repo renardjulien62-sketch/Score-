@@ -42,7 +42,7 @@ const inputIdMap = {
 const auth = firebase.auth(); 
 let partieIdActuelle = null; 
 let currentUser = null;
-const db = firebase.firestore(); // Assure-toi que db est bien initialisé ici si ce n'est pas fait dans le HTML
+// NOTE : La variable 'db' est déjà déclarée dans le fichier HTML, on l'utilise directement ici.
 
 // =============================================================
 // 2. SÉLECTION DES ÉLÉMENTS HTML (DOM)
