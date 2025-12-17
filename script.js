@@ -940,6 +940,7 @@ function afficherStatsGlobales() {
 // =============================================================
 
 // --- FONCTION QUI MANQUAIT (DÉPLACÉE AVANT SON APPEL) ---
+// Affiche la page de détails avec la liste des parties pour un jeu donné
 function afficherDetailsHistoriqueJeu(nomJeu) {
     // 1. Changement de page et Titre
     showPage('page-history-details');
@@ -995,7 +996,8 @@ function afficherDetailsHistoriqueJeu(nomJeu) {
                 if(j.rang === 1) medaille = '🥇';
                 if(j.rang === 2) medaille = '🥈';
                 if(j.rang === 3) medaille = '🥉';
-                podiumHTML += `<span style="margin-right:10px;"><span class="podium-medaille-small">${medaille}</span> ${j.nom} <strong>${j.scoreTotal}</strong></span>`;
+                // ICI : Ajout du " : " avant le score
+                podiumHTML += `<span style="margin-right:10px;"><span class="podium-medaille-small">${medaille}</span> ${j.nom} : <strong>${j.scoreTotal}</strong></span>`;
             });
         }
 
