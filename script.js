@@ -42,7 +42,7 @@ const inputIdMap = {
 const auth = firebase.auth(); 
 let partieIdActuelle = null; 
 let currentUser = null;
-// NOTE : La variable 'db' est déjà déclarée dans le fichier HTML via firebase.firestore(), on l'utilise directement.
+// NOTE : La variable 'db' est déjà déclarée dans le fichier HTML
 
 // =============================================================
 // 2. SÉLECTION DES ÉLÉMENTS HTML (DOM)
@@ -120,7 +120,7 @@ const revealScore = document.getElementById('reveal-score');
 const skipAllBtn = document.getElementById('skip-all-btn');
 const retourAccueilBtn = document.getElementById('retour-accueil-btn');
 
-// Stats
+// Stats & Graphique Analyse
 const historyPlayerSelect = document.getElementById('history-player-select');
 const canvasGraphiquePosition = document.getElementById('graphique-position-details');
 const statsTopJeuxListe = document.querySelector('#stats-top-jeux ol');
@@ -128,6 +128,7 @@ const statsJeuxFrequenceListe = document.querySelector('#stats-jeux-frequence ol
 const statsJoueursPodiumListe = document.querySelector('#stats-joueurs-podium ol');
 const addPlayerToGraphBtn = document.getElementById('add-player-to-graph-btn');
 const graphPlayersList = document.getElementById('graph-players-list');
+const filterCommonGamesInput = document.getElementById('filter-common-games-checkbox'); // NOUVEAU
 
 // Amis & Profil
 const friendEmailInput = document.getElementById('friend-email-input');
@@ -940,14 +941,16 @@ function afficherStatsGlobales() {
 // =============================================================
 
 function afficherDetailsHistoriqueJeu(nomJeu) {
-    // 1. Changement de page et Titre
     showPage('page-history-details');
     historyDetailsTitle.textContent = `Historique : ${nomJeu}`;
 
-    // 2. Filtrer les données pour ce jeu
+    // Réinitialiser la case à cocher
+    if(filterCommonGamesInput) filterCommonGamesInput.checked = false;
+
+    // Filtrer les données pour ce jeu (Global pour cette vue)
     const partiesDuJeu = allHistoryData.filter(p => (p.nomJeu || "Parties") === nomJeu);
 
-    // 3. Remplir le select pour le graphique
+    // Remplir le select pour le graphique
     const joueursUniques = new Set();
     partiesDuJeu.forEach(p => {
         if (p.classement) p.classement.forEach(j => joueursUniques.add(j.nom));
@@ -962,15 +965,16 @@ function afficherDetailsHistoriqueJeu(nomJeu) {
         historyPlayerSelect.appendChild(opt);
     });
 
-    // 4. Reset du graphique et des tags
+    // Reset du graphique et des tags
     joueursSurGraphique = []; 
     if (monProfilLocal.nom && joueursUniques.has(monProfilLocal.nom)) {
         joueursSurGraphique.push(monProfilLocal.nom);
     }
-    mettreAJourTagsGraphique();
-    redessinerGraphiquePosition(partiesDuJeu);
+    
+    // Initialisation du graphique avec les filtres
+    actualiserGraphiqueAvecFiltres();
 
-    // 5. Afficher la liste des parties
+    // Afficher la liste des parties (Toutes par défaut)
     listeHistoriquePartiesDetails.innerHTML = '';
     
     if (partiesDuJeu.length === 0) {
@@ -994,8 +998,6 @@ function afficherDetailsHistoriqueJeu(nomJeu) {
                 if(j.rang === 1) medaille = '🥇';
                 if(j.rang === 2) medaille = '🥈';
                 if(j.rang === 3) medaille = '🥉';
-                
-                // CORRECTION ICI : " : " ajouté
                 podiumHTML += `<span style="margin-right:10px;"><span class="podium-medaille-small">${medaille}</span> ${j.nom} : <strong>${j.scoreTotal}</strong></span>`;
             });
         }
@@ -1019,6 +1021,32 @@ function afficherDetailsHistoriqueJeu(nomJeu) {
     });
 }
 
+function actualiserGraphiqueAvecFiltres() {
+    mettreAJourTagsGraphique();
+
+    // 1. Récupérer le nom du jeu actuel depuis le titre
+    const nomJeu = historyDetailsTitle.textContent.replace('Historique : ', '');
+    let parties = allHistoryData.filter(p => (p.nomJeu || "Parties") === nomJeu);
+
+    // 2. Appliquer le filtre "Parties Communes" si coché
+    if (filterCommonGamesInput && filterCommonGamesInput.checked && joueursSurGraphique.length > 0) {
+        parties = parties.filter(partie => {
+            const nomsDansLaPartie = partie.classement.map(j => j.nom);
+            // Vérifie si TOUS les joueurs sélectionnés sont présents dans cette partie
+            return joueursSurGraphique.every(joueurSelectionne => nomsDansLaPartie.includes(joueurSelectionne));
+        });
+    }
+
+    // 3. Trier par date et dessiner
+    parties.sort((a, b) => new Date(a.date) - new Date(b.date));
+    redessinerGraphiquePosition(parties);
+}
+
+// Écouteur sur la case à cocher
+if(filterCommonGamesInput) {
+    filterCommonGamesInput.addEventListener('change', actualiserGraphiqueAvecFiltres);
+}
+
 function mettreAJourTagsGraphique() {
     graphPlayersList.innerHTML = '';
     joueursSurGraphique.forEach((nom, index) => {
@@ -1032,18 +1060,13 @@ function mettreAJourTagsGraphique() {
         tag.querySelector('.bouton-retirer').addEventListener('click', (e) => {
             e.stopPropagation(); 
             joueursSurGraphique = joueursSurGraphique.filter(n => n !== nom);
-            mettreAJourTagsGraphique();
-            
-            const nomJeu = historyDetailsTitle.textContent.replace('Historique : ', '');
-            const parties = allHistoryData.filter(p => (p.nomJeu || "Parties") === nomJeu).sort((a,b)=>new Date(a.date)-new Date(b.date));
-            redessinerGraphiquePosition(parties);
+            actualiserGraphiqueAvecFiltres(); // APPEL DE LA NOUVELLE FONCTION
         });
         
         graphPlayersList.appendChild(tag);
     });
 }
 
-// CORRECTION ICI : Calcul en %
 function redessinerGraphiquePosition(partiesTrieesParDate) {
     if (joueursSurGraphique.length === 0 || partiesTrieesParDate.length === 0) {
         if(monGraphiquePosition) {
@@ -1053,27 +1076,22 @@ function redessinerGraphiquePosition(partiesTrieesParDate) {
         return;
     }
 
-    const partiesChronologiques = [...partiesTrieesParDate].sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    const labels = partiesChronologiques.map(p => {
+    const labels = partiesTrieesParDate.map(p => {
         const d = new Date(p.date);
         return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
     });
 
     const datasets = joueursSurGraphique.map((nomJoueur, index) => {
-        const data = partiesChronologiques.map(partie => {
-            // Trouver le rang du joueur dans cette partie
+        const data = partiesTrieesParDate.map(partie => {
             const joueurData = partie.classement.find(j => j.nom === nomJoueur);
             
-            if (!joueurData) return null; // Pas joué
+            if (!joueurData) return null; 
 
             const rang = joueurData.rang;
             const nbJoueurs = partie.classement.length;
 
-            // Calcul du pourcentage de performance (1er = 100%, Dernier = 0%)
-            if (nbJoueurs <= 1) return 100; // Cas solo ou bug
+            if (nbJoueurs <= 1) return 100; 
             
-            // Formule : (NombreJoueurs - Rang) / (NombreJoueurs - 1) * 100
             const performance = ((nbJoueurs - rang) / (nbJoueurs - 1)) * 100;
             return Math.round(performance); 
         });
@@ -1103,7 +1121,6 @@ function redessinerGraphiquePosition(partiesTrieesParDate) {
             maintainAspectRatio: false, 
             scales: {
                 y: {
-                    // On enlève reverse: true car 100% est naturellement en haut
                     beginAtZero: true,
                     max: 105, 
                     title: { display: true, text: 'Performance (%)' },
@@ -1124,6 +1141,15 @@ function redessinerGraphiquePosition(partiesTrieesParDate) {
         }
     });
 }
+
+// Modif Bouton Ajouter Joueur Graphique pour appeler la nouvelle fonction
+addPlayerToGraphBtn.addEventListener('click', () => { 
+    const nom = historyPlayerSelect.value; 
+    if(nom && !joueursSurGraphique.includes(nom)) { 
+        joueursSurGraphique.push(nom); 
+        actualiserGraphiqueAvecFiltres(); // APPEL DE LA NOUVELLE FONCTION
+    } 
+});
 
 // --- AUTRES HELPERS ---
 
