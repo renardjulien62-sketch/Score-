@@ -42,7 +42,7 @@ const inputIdMap = {
 const auth = firebase.auth(); 
 let partieIdActuelle = null; 
 let currentUser = null;
-// NOTE : La variable 'db' est déjà déclarée dans le fichier HTML, on l'utilise directement ici.
+// NOTE : La variable 'db' est déjà déclarée dans le fichier HTML via firebase.firestore(), on l'utilise directement.
 
 // =============================================================
 // 2. SÉLECTION DES ÉLÉMENTS HTML (DOM)
@@ -939,7 +939,6 @@ function afficherStatsGlobales() {
 // 10. FONCTIONS HELPERS, REVEAL & GRAPHIQUES (DONT DETAILS)
 // =============================================================
 
-// Affiche la page de détails avec la liste des parties pour un jeu donné
 function afficherDetailsHistoriqueJeu(nomJeu) {
     // 1. Changement de page et Titre
     showPage('page-history-details');
@@ -996,8 +995,8 @@ function afficherDetailsHistoriqueJeu(nomJeu) {
                 if(j.rang === 2) medaille = '🥈';
                 if(j.rang === 3) medaille = '🥉';
                 
-                // --- CORRECTION ICI : Ajout de " : " ---
-                podiumHTML += `<span style="margin-right:10px;"><span class="podium-medaille-small">${medaille}</span> ${j.nom} : <strong>${ j.scoreTotal}</strong></span>`;
+                // CORRECTION ICI : " : " ajouté
+                podiumHTML += `<span style="margin-right:10px;"><span class="podium-medaille-small">${medaille}</span> ${j.nom} : <strong>${j.scoreTotal}</strong></span>`;
             });
         }
 
@@ -1044,9 +1043,8 @@ function mettreAJourTagsGraphique() {
     });
 }
 
-// Dessine le graphique d'évolution des positions (Analyse en %)
+// CORRECTION ICI : Calcul en %
 function redessinerGraphiquePosition(partiesTrieesParDate) {
-    // Si aucun joueur sélectionné ou pas de parties, on nettoie
     if (joueursSurGraphique.length === 0 || partiesTrieesParDate.length === 0) {
         if(monGraphiquePosition) {
             monGraphiquePosition.destroy();
@@ -1087,8 +1085,8 @@ function redessinerGraphiquePosition(partiesTrieesParDate) {
             data: data,
             borderColor: couleur,
             backgroundColor: couleur,
-            tension: 0.3, // Un peu plus courbe pour l'esthétique
-            spanGaps: true
+            tension: 0.3,
+            spanGaps: true 
         };
     });
 
@@ -1102,12 +1100,12 @@ function redessinerGraphiquePosition(partiesTrieesParDate) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false, // Permet au graph de bien prendre la hauteur
+            maintainAspectRatio: false, 
             scales: {
                 y: {
                     // On enlève reverse: true car 100% est naturellement en haut
                     beginAtZero: true,
-                    max: 105, // Un peu de marge en haut
+                    max: 105, 
                     title: { display: true, text: 'Performance (%)' },
                     ticks: { 
                         callback: function(value) { return value + "%" } 
